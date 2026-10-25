@@ -51,17 +51,28 @@ struct BatterySection: View {
     private func health(_ points: [HealthPoint], current: BatterySnapshot?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Health").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            if let health = current?.healthPercent ?? points.last?.healthPercent {
-                DetailRow(label: "Maximum capacity", value: String(format: "%.1f%% of new", health))
+            if let macOS = current?.macOSMaximumCapacityPercent ?? points.last?.macOSPercent {
+                DetailRow(label: "Maximum capacity", value: "\(macOS)%")
+            } else if let gauge = current?.gaugeCapacityPercent ?? points.last?.gaugePercent {
+                DetailRow(label: "Maximum capacity", value: String(format: "%.1f%% of new", gauge))
+            }
+            if let nominal = current?.nominalCapacityMAh, let design = current?.designCapacityMAh {
+                DetailRow(label: "Holds when full", value: "\(nominal.formatted()) of \(design.formatted()) mAh")
+                if let macOS = current?.macOSMaximumCapacityPercent, let gauge = current?.gaugeCapacityPercent, abs(Double(macOS) - gauge) >= 1 {
+                    Text("Maximum capacity is macOS's own rating, as System Settings shows it. It isn't worked out from these figures, so it can differ.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             if let cycles = current?.cycleCount ?? points.last?.cycles {
                 DetailRow(label: "Cycle count", value: "\(cycles)")
             }
-            if let first = points.first, let last = points.last, points.count >= 2 {
-                let change = last.healthPercent - first.healthPercent
+            let trend = HealthPoint.trend(points)
+            if let first = trend.first, let last = trend.last, trend.count >= 2 {
                 DetailRow(label: "Since \(first.day.formatted(.dateTime.day().month()))",
-                          value: String(format: "%+.1f points", change))
-                Sparkline(values: points.map(\.healthPercent)).frame(height: 18)
+                          value: String(format: "%+.1f points", last.percent - first.percent))
+                Sparkline(values: trend.map(\.percent)).frame(height: 18)
             } else {
                 Text("A reading is kept each day; the trend appears as days pass.")
                     .font(.caption)

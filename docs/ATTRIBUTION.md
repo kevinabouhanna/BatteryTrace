@@ -76,16 +76,23 @@ P_backlight(s) = k × (−0.085·s + 5.12·s²)  W      s = brightness slider, 0
 ```
 
 - **This Mac's own curve, when it has one.** Settings › Measurement › Display ›
-  **Calibrate…** steps the slider for about a minute with the Mac idle, reads
+  **Calibrate…** steps the slider for under two minutes with the Mac idle, reads
   `PSTR`, subtracts the chip's measured energy, and fits
   `rest = a + b·s + c·s²`. A fit quality (R²) below 0.6 means something else was
   busy, and the result isn't used. A calibrated Mac uses its own curve, with
   `k = 1`. `bttrace calibrate-display` runs the same measurement.
-- **Otherwise, the reference curve above, scaled.** It was fitted on a MacBook
-  Air (M1, 2020): the mean of two quiet runs, each with fit quality 0.99, at
-  4.8 and 5.3 W at full brightness. `k` scales it to other built-in panels by
-  peak brightness × area relative to that one (420 nits, 286.9 × 179.3 mm).
-  That's a rough extrapolation, which is what calibrating replaces.
+- **Otherwise, the reference curve above, scaled to this Mac's panel.** It was
+  fitted on a MacBook Air (M1, 2020): the mean of two quiet runs, each with fit
+  quality 0.99, at 4.8 and 5.3 W at full brightness. `k` scales it to whichever
+  built-in panel Battery Trace runs on, by area × peak brightness relative to
+  that one (286.9 × 179.3 mm, 420 nits). Both come from the Mac itself: the
+  size from CoreGraphics, the peak from the backlight's `BrightnessMilliNits`.
+  The peak is capped at 600 nits, the top of the SDR range the slider covers,
+  because an XDR panel may report its 1600-nit HDR peak, which would triple
+  the estimate. A 15-inch, 500-nit panel gets about 1.6 times the Air's curve.
+  Settings › Measurement › Display shows the panel's size, peak and estimate.
+  Scaling assumes the same kind of backlight. It's rough for a different kind
+  (mini-LED), which is what calibrating replaces.
 - **The curve is convex.** The slider is perceptual, so half brightness draws
   far less than half the power: about 1.2 W at half, against 5 W at full. The
   backlight current agrees: it read 7.5% of its maximum at half slider.

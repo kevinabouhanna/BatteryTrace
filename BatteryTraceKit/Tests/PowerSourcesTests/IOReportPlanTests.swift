@@ -55,6 +55,20 @@ import Testing
         #expect(GPUClientReader.pid(fromCreator: "WindowServer") == nil)
     }
 
+    @Test func theEstimateScalesToEachMacsPanel() {
+        typealias Panel = DisplayBacklightSource.Panel
+        let air13 = Panel(widthMM: 286.87, heightMM: 179.29, peakNits: 420, peakReported: true)
+        #expect(abs(air13.diagonalInches - 13.3) < 0.05)
+        #expect(abs(air13.scale - 1) < 0.001)
+        // A 15.3-inch, 500-nit panel: about 1.6 times the area × brightness.
+        let air15 = Panel(widthMM: 331.2, heightMM: 215.3, peakNits: 500, peakReported: true)
+        #expect(abs(air15.diagonalInches - 15.5) < 0.2)
+        #expect(air15.scale > 1.5 && air15.scale < 1.7)
+        #expect(air15.estimatedFullBrightnessWatts > air13.estimatedFullBrightnessWatts)
+        // The slider tops out at SDR brightness, never an XDR panel's HDR peak.
+        #expect(DisplayBacklightSource.sdrPeakCapNits < 1600)
+    }
+
     @Test func displayModelIsZeroAtTheBottomAndAboutFiveWattsAtTheTop() {
         #expect(DisplayBacklightSource.watts(slider: 0, scale: 1) == 0)
         #expect(abs(DisplayBacklightSource.watts(slider: 1, scale: 1) - 5.035) < 0.01)
