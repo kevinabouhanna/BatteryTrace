@@ -1,5 +1,6 @@
 import BatteryTraceCore
 import Dispatch
+import PowerSources
 import Foundation
 
 /// Runs the pipeline on a timer, on its own utility-QoS serial queue.
@@ -25,6 +26,7 @@ public final class SamplingEngine: @unchecked Sendable {
     private var onReport: ReportHandler?
     private var onLive: LiveHandler?
     private var countsBilledEnergy = true
+    private var displayCalibration: DisplayCalibration?
 
     public init(policy: SamplingPolicy = SamplingPolicy(), makePipeline: @escaping @Sendable () -> SamplingPipeline = { .standard() }) {
         self.policy = policy
@@ -39,6 +41,7 @@ public final class SamplingEngine: @unchecked Sendable {
             self.onReport = onReport
             if self.pipeline == nil { self.pipeline = self.makePipeline() }
             self.pipeline?.countsBilledEnergy = self.countsBilledEnergy
+            self.pipeline?.display?.use(self.displayCalibration)
             _ = self.pipeline?.tick(detailed: false) // primes every baseline
             if let reading = self.pipeline?.quickTick() { onLive(reading) }
             self.reschedule()
@@ -58,6 +61,14 @@ public final class SamplingEngine: @unchecked Sendable {
             guard self.policy != policy else { return }
             self.policy = policy
             self.reschedule()
+        }
+    }
+
+    /// This Mac's measured display curve, or nil for the scaled reference.
+    public func setDisplayCalibration(_ calibration: DisplayCalibration?) {
+        queue.async {
+            self.displayCalibration = calibration
+            self.pipeline?.display?.use(calibration)
         }
     }
 

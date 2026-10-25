@@ -103,6 +103,9 @@ public struct DisplaySnapshot: Sendable, Hashable, Codable {
     public var backlightFraction: Double?
     /// Our model's backlight power. Always an estimate.
     public var estimatedBacklightWatts: Double?
+    /// Whether the model was measured on this Mac rather than scaled from
+    /// the reference panel.
+    public var calibratedOnThisMac = false
 
     public init(brightness: Double? = nil, backlightFraction: Double? = nil, estimatedBacklightWatts: Double? = nil) {
         self.brightness = brightness

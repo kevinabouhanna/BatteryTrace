@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var terminationSignal: DispatchSourceSignal?
     private let launchAtLogin = LaunchAtLogin()
     private var alerts: PowerAlerts!
+    private var calibration: DisplayCalibrationController!
     /// Built when Settings opens and released when it closes, so a closed
     /// Settings holds no view hierarchy.
     private var settingsController: SettingsWindowController?
@@ -36,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem.openSettingsWindow = { [weak self] in self?.openSettingsWindow }
         conditions = SystemConditions(engine: model.engine, history: model.history)
         alerts = PowerAlerts(settings: model.settings)
+        calibration = DisplayCalibrationController(settings: model.settings)
         alerts.onOpen = { [weak self] in self?.statusItem.showPopover() }
         model.onReport = { [weak self] report in self?.alerts.receive(report) }
         model.start()
@@ -119,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func makeSettings() -> SettingsWindowController {
-        let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin, alerts: alerts,
+        let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin, alerts: alerts, calibration: calibration,
                                                 onExport: { [weak self] in self?.exportHistory() })
         settings.window.delegate = self
         settings.highestTop = { [weak self] screen in

@@ -64,13 +64,19 @@ struct SystemSection: View {
     private func caption(for id: ComponentID, system: SystemSnapshot) -> String? {
         switch id {
         case .displayBacklight:
-            return system.display.brightness.map { String(format: "Brightness %.0f%% · estimate from brightness", $0 * 100) } ?? "Estimate from brightness"
+            var parts: [String] = []
+            if let brightness = system.display.brightness { parts.append(String(format: "Brightness %.0f%%", brightness * 100)) }
+            parts.append(system.display.calibratedOnThisMac ? "calibrated here" : "not calibrated")
+            if DisplayConditions.builtInShowsHDR { parts.append("HDR on: may read low") }
+            return parts.joined(separator: " · ")
         case .cpu:
             return system.cpuLoad.perCore.isEmpty ? nil : String(format: "Load %.0f%% across %d cores", system.cpuLoad.average * 100, system.cpuLoad.perCore.count)
         case .memory:
             return "DRAM and its controller"
         case .displayController:
-            return "The chip's display pipes"
+            return DisplayConditions.hasExternalDisplay
+                ? "The chip's display pipes. An external display powers itself; only this side counts."
+                : "The chip's display pipes"
         case .otherSoC:
             return "Video codecs, image processor, always-on blocks"
         default:
@@ -117,7 +123,7 @@ struct ComponentRow: View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
-                    Text(name)
+                    Text(name).lineLimit(1).fixedSize()
                     if estimated {
                         Text("estimate").font(.caption2).padding(.horizontal, 4).background(.quaternary, in: Capsule())
                     }
@@ -128,7 +134,7 @@ struct ComponentRow: View {
             }
             Spacer(minLength: 4)
             if series.count >= 2 {
-                Sparkline(values: series).frame(width: 64, height: 16)
+                Sparkline(values: series).frame(width: 56, height: 16)
             }
             Text(Units.watts(watts, estimated: estimated))
                 .monospacedDigit()
@@ -166,4 +172,21 @@ struct CoreBars: View {
         }
         .accessibilityLabel(String(format: "Average load %.0f percent", load.reduce(0, +) / Double(max(1, load.count)) * 100))
     }
+}
+
+/// What the screens are doing, read when the System tab is drawn.
+@MainActor
+enum DisplayConditions {
+    private static func isBuiltIn(_ screen: NSScreen) -> Bool {
+        guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return false }
+        return CGDisplayIsBuiltin(number.uint32Value) != 0
+    }
+
+    /// HDR content is showing on the built-in screen: the panel can draw
+    /// more than the brightness model expects.
+    static var builtInShowsHDR: Bool {
+        NSScreen.screens.contains { isBuiltIn($0) && $0.maximumExtendedDynamicRangeColorComponentValue > 1.0 }
+    }
+
+    static var hasExternalDisplay: Bool { NSScreen.screens.contains { !isBuiltIn($0) } }
 }

@@ -29,7 +29,7 @@ memory and the rest of the chip.
   [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md).
 - **No root, no permissions, no dependencies.**
 
-<p align="center"><img src="docs/images/popover-system.png" width="360" alt="The popover's System tab on a MacBook Air: 71% battery, 5.3 W from the battery, and a breakdown of CPU 502 mW, GPU 63 mW, memory 257 mW, display backlight about 2.07 W (an estimate), display controller 54 mW, other chip blocks 98 mW and 1.49 W unattributed, out of 4.53 W measured."></p>
+<p align="center"><img src="docs/images/popover-system.png" width="360" alt="The popover's System tab on a MacBook Air: 80% battery, on the power adapter, drawing 6.19 W. The breakdown shows CPU 305 mW, GPU 65 mW, memory 212 mW, display backlight about 1.18 W (an estimate, not calibrated on this Mac), display controller 41 mW, other chip blocks 100 mW and 2.87 W unattributed, out of 4.77 W measured."></p>
 
 ## Install
 
@@ -126,7 +126,7 @@ make measure                   # the built app's own CPU, Energy Impact and memo
 | **Child processes** | That app's CPU share, split by each process's own energy counter. The rest is "Other or exited processes". | Estimated |
 | **System / Unattributed** | Everything that isn't an app: display, memory, other chip blocks, and the measured power no counter accounts for | Measured, except the display |
 | **CPU, GPU, Neural Engine, Memory** | The chip's energy counters (IOReport, PMP group) | Measured by the chip's power manager |
-| **Display backlight** | Brightness mapped to watts by a curve fitted against the power sensor | **Estimate** (labelled) |
+| **Display backlight** | Brightness mapped to watts by a curve fitted against the power sensor: this Mac's own after **Settings › Calibrate…**, otherwise a MacBook Air's, scaled | **Estimate** (labelled) |
 | **Display controller, other chip blocks** | The chip's display pipes; video codecs, image processor, always-on blocks | Measured |
 | **Unattributed** | Measured total minus every component: Wi-Fi, SSD, audio, panel electronics, power conversion | Measured remainder |
 | **Totals for 5 min, 1 hour, 24 hours** | The battery gauge's own running averages when they cover the window, otherwise the power sensor | Measured |
@@ -168,10 +168,12 @@ All are looked up at run time. A missing one hides its metric; the app doesn't c
 - **The CPU row reads about 0.3 W below `powermetrics`.** Apple has two CPU
   energy counters; the one `powermetrics` uses is only refreshed for root.
   The difference stays inside Unattributed.
-- **The display estimate was calibrated on one MacBook Air panel.** It doesn't
-  model HDR/XDR or ProMotion. Recalibrate with `bttrace calibrate-display`.
-- **Unattributed is typically 25–40% at light load,** and more while streaming
-  (Wi-Fi, audio). It isn't spread across apps.
+- **The display estimate is a model.** Out of the box it's a MacBook Air's
+  curve scaled to your panel; **Settings › General › Display › Calibrate…**
+  measures your own in a minute. It doesn't model HDR/XDR boost (it says when
+  HDR is showing) or ProMotion.
+- **Unattributed is typically 40–50% at light load,** and more while
+  streaming (Wi-Fi, audio). It isn't spread across apps.
 - **Intel Macs** have no IOReport energy counters and often no `PSTR`: fewer
   components, and app shares from the kernel's CPU model alone.
 
@@ -190,9 +192,7 @@ totals and parts, minute by minute.
 1. **An optional privileged helper** (an `SMAppService` daemon running
    `powermetrics`), behind the existing `PowerMetricsProvider` protocol. It
    would give per-process energy for every process, and Apple's own CPU figure.
-2. **Per-model display calibration.** Ship curves for each MacBook panel, and
-   model external displays and HDR.
-3. **Signed, notarized builds and an update channel.**
+2. **Signed, notarized builds and an update channel.**
 
 ## Project layout
 

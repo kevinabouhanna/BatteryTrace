@@ -72,24 +72,40 @@ driver costs about 0.65 ms per read.
 ### The display backlight: a model, always labelled "estimate"
 
 ```
-P_backlight(s) = k × (4.78·s − 1.08·s²)  W      s = brightness slider, 0…1
+P_backlight(s) = k × (−0.085·s + 5.12·s²)  W      s = brightness slider, 0…1
 ```
 
-- The curve was fitted on a MacBook Air (M1, 2020) with `bttrace
-  calibrate-display`. That steps the slider with the Mac idle, reads `PSTR`,
-  and subtracts the SoC's measured energy. Two runs gave 3.5 and 3.7 W from the
-  lowest to the highest setting; the fit's R² was 0.85.
-- `k` scales the curve to other built-in panels by peak brightness × area
-  relative to that one (420 nits, 286.9 × 179.3 mm). That's a rough
-  extrapolation.
-- The display power is 0 while the built-in display sleeps or is off (lid closed).
-- The slider comes from `DisplayServicesGetBrightness` (private). Every
-  brightness figure in the IORegistry (`AppleARMBacklight` →
-  `IODisplayParameters`, backlight current included) stayed frozen while the
-  slider moved from 0.05 to 1.0, so they serve only as a fallback.
-- The fit's intercept (1.28 W at idle) is power that doesn't change with
-  brightness. It includes the panel's electronics, but also Wi-Fi, the SSD and
-  conversion losses, and can't be separated from them. It stays in Unattributed.
+- **This Mac's own curve, when it has one.** Settings › General › Display ›
+  **Calibrate…** steps the slider for about a minute with the Mac idle, reads
+  `PSTR`, subtracts the chip's measured energy, and fits
+  `rest = a + b·s + c·s²`. A fit quality (R²) below 0.6 means something else was
+  busy, and the result isn't used. A calibrated Mac uses its own curve, with
+  `k = 1`. `bttrace calibrate-display` runs the same measurement.
+- **Otherwise, the reference curve above, scaled.** It was fitted on a MacBook
+  Air (M1, 2020): the mean of two quiet runs, each with fit quality 0.99, at
+  4.8 and 5.3 W at full brightness. `k` scales it to other built-in panels by
+  peak brightness × area relative to that one (420 nits, 286.9 × 179.3 mm).
+  That's a rough extrapolation, which is what calibrating replaces.
+- **The curve is convex.** The slider is perceptual, so half brightness draws
+  far less than half the power: about 1.2 W at half, against 5 W at full. The
+  backlight current agrees: it read 7.5% of its maximum at half slider.
+- **0.1–0.5 used a different curve, now replaced.** It was fitted while other
+  work was running (fit quality 0.85): `4.78·s − 1.08·s²`, concave, 3.7 W at
+  full and 2.1 W at half. It overstated the display at the brightness most
+  people use by about 0.9 W, and so understated Unattributed.
+- **When it's 0:** while the built-in display sleeps or is off (lid closed).
+- **HDR content** on the built-in screen can drive the panel beyond what the
+  brightness model expects. The System tab says when it's showing.
+- **External displays** power themselves. Only their controller on the chip
+  (`DISPX`) is counted, and the System tab says so.
+- **Where the slider comes from:** `DisplayServicesGetBrightness` (private).
+  Every brightness figure in the IORegistry (`AppleARMBacklight` →
+  `IODisplayParameters`, backlight current included) stays frozen while the
+  slider moves, so they serve only as a fallback.
+- **The intercept stays in Unattributed.** The fits' intercepts (1.8–2.2 W at
+  idle) are power that doesn't change with brightness. That includes the
+  panel's electronics, but also Wi-Fi, the SSD and conversion losses, which
+  can't be separated from them.
 
 ## 3. Unattributed
 
@@ -208,9 +224,11 @@ by name, since PIDs come and go.
 4. **Media engines and memory aren't split across apps.** Video decode and
    encode, the image processor and DRAM show as system components. The brief
    asks for CPU, GPU and ANE only to be split.
-5. **The display figure is a model of one panel.** On other Macs it's an
-   extrapolation. It doesn't model HDR/XDR boost or ProMotion, and it doesn't
-   see auto-brightness changes between readings. An external display powers
+5. **The display figure is a model.** Uncalibrated, it's one panel's curve
+   scaled to another; calibrated, it's this panel's, measured under the
+   conditions of the calibration. It doesn't model HDR/XDR boost (it says
+   when HDR is showing) or ProMotion, and it doesn't see auto-brightness
+   changes between readings. An external display powers
    itself; only its SoC-side controller (`DISPX`) is counted.
 6. **Timing.** The live sensor is instantaneous and integrated every 2–5 s
    (every 60 s while the screens sleep). The gauge's windows end up to a minute

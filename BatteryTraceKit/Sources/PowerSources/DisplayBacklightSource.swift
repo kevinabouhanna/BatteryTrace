@@ -7,14 +7,15 @@ import IOKit
 ///
 /// No sensor measures panel power, so this is always an **estimate**:
 ///
-///     watts ≈ scale × (4.78·s − 1.08·s²)      s = brightness slider, 0…1
+///     watts ≈ scale × (−0.085·s + 5.12·s²)      s = brightness slider, 0…1
 ///
 /// The curve was fitted on a MacBook Air (M1, 2020) by stepping the slider
-/// with the Mac idle and watching the system power sensor, with the SoC's own
-/// measured energy subtracted (`bttrace calibrate-display`; R² 0.85, about
-/// 3.7 W from the lowest to the highest setting). Other panels are scaled by
-/// peak brightness × area relative to that one, which is rough, and is why the
-/// UI says "estimate". Power that doesn't change with brightness (the panel's
+/// with the Mac idle and watching the system power sensor, with the chip's own
+/// measured energy subtracted (`DisplayCalibrator`): about 5 W at full
+/// brightness, 1.2 W at half. Other panels are scaled by peak brightness ×
+/// area relative to that one, which is rough, until the Mac measures its own
+/// panel (Settings › General › Display › Calibrate…); then its own curve is
+/// used, unscaled. Power that doesn't change with brightness (the panel's
 /// electronics) can't be separated from the rest of the Mac, so it stays in
 /// Unattributed.
 ///
@@ -27,13 +28,16 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
     public private(set) var isAvailable = false
     public private(set) var diagnostics: [String] = []
 
-    /// Coefficients of the fitted curve, in watts, for the reference panel.
-    public static let referenceCurve = (linear: 4.78, quadratic: -1.08)
-    /// The panel the curve was fitted on: 420 nits, 286.9 × 179.3 mm.
+    /// The panel the reference curve was fitted on: 420 nits, 286.9 × 179.3 mm.
     static let referencePeakNits = 420.0
     static let referenceAreaMM2 = 286.87 * 179.29
 
-    private let scale: Double
+    /// The reference curve's scale for this panel, by peak brightness × area.
+    private let panelScale: Double
+    private var curve = BacklightCurve.reference
+    private var scale: Double
+    /// Set when this Mac measured its own panel (Settings › Calibrate…).
+    public private(set) var calibration: DisplayCalibration?
     private let backlight: io_registry_entry_t
     private var lastWatts: Double?
     private var hasBaseline = false
@@ -63,6 +67,7 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
             let nits = Self.peakNits(backlight) ?? Self.referencePeakNits
             if area > 0 { panelScale = min(4, max(0.5, (nits * area) / (Self.referencePeakNits * Self.referenceAreaMM2))) }
         }
+        self.panelScale = panelScale
         scale = panelScale
 
         if builtInDisplay == nil {
@@ -73,7 +78,7 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
             isAvailable = true
             diagnostics.append(String(format: "brightness from %@; model ≈ %.2f W at full brightness (estimate, scale %.2f)",
                                       getBrightness != nil ? "DisplayServices" : "IORegistry (may be stale)",
-                                      Self.watts(slider: 1, scale: scale), scale))
+                                      curve.watts(slider: 1) * scale, scale))
         }
     }
 
@@ -82,8 +87,24 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
     }
 
     static func watts(slider s: Double, scale: Double) -> Double {
-        max(0, scale * (referenceCurve.linear * s + referenceCurve.quadratic * s * s))
+        scale * BacklightCurve.reference.watts(slider: s)
     }
+
+    /// Uses this Mac's own measured curve, or the reference scaled to this
+    /// panel when `calibration` is nil or untrustworthy.
+    public func use(_ calibration: DisplayCalibration?) {
+        if let calibration, calibration.isTrustworthy {
+            self.calibration = calibration
+            curve = calibration.curve
+            scale = 1
+        } else {
+            self.calibration = nil
+            curve = .reference
+            scale = panelScale
+        }
+    }
+
+    private func watts(slider s: Double) -> Double { scale * curve.watts(slider: s) }
 
     /// The slider position, 0…1, or nil if the panel is asleep or gone.
     /// A tick asks twice (energy, then the System section); the second
@@ -109,7 +130,7 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
 
     /// The model's backlight power right now. 0 when the panel is off.
     public func estimatedWatts() -> Double {
-        brightness().map { Self.watts(slider: $0, scale: scale) } ?? 0
+        brightness().map { watts(slider: $0) } ?? 0
     }
 
     public func resetBaseline() { hasBaseline = false }
@@ -130,7 +151,8 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
     public func update(_ snapshot: inout SystemSnapshot) {
         var display = DisplaySnapshot()
         display.brightness = brightness()
-        display.estimatedBacklightWatts = isAvailable ? display.brightness.map { Self.watts(slider: $0, scale: scale) } ?? 0 : nil
+        display.estimatedBacklightWatts = isAvailable ? display.brightness.map { watts(slider: $0) } ?? 0 : nil
+        display.calibratedOnThisMac = calibration != nil
         snapshot.display = display
     }
 

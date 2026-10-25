@@ -30,6 +30,13 @@ terminal and a browser), with brightness at about 50% and auto-brightness on.
   That is the power no counter covers: Wi-Fi, SSD, audio, panel electronics and
   power conversion. The display calibration puts that brightness-independent
   floor at about 1.3 W on this Mac.
+- **Since 0.6.0 the display curve is better measured, and Unattributed is
+  larger.** Two quiet calibration runs (fit quality 0.99) showed the display
+  draws far less at mid brightness than the first fit said. At this run's
+  ~50% brightness that is about 1.3 W instead of 2.2 W. Recomputed with it,
+  this run's components come to about 2.15 W, and Unattributed to about 51%.
+  The figures in the table above are as measured with 0.1's curve. See
+  `ATTRIBUTION.md` › The display backlight.
 - **The display model matters most.** Before calibration, the backlight was
   modelled from the backlight current in the IORegistry, which turned out to be
   frozen. Unattributed was then 66–81%. After calibration against the sensor it

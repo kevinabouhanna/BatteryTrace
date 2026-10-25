@@ -55,9 +55,9 @@ import Testing
         #expect(GPUClientReader.pid(fromCreator: "WindowServer") == nil)
     }
 
-    @Test func displayModelIsZeroAtTheBottomAndAboutThreeWattsSevenAtTheTop() {
+    @Test func displayModelIsZeroAtTheBottomAndAboutFiveWattsAtTheTop() {
         #expect(DisplayBacklightSource.watts(slider: 0, scale: 1) == 0)
-        #expect(abs(DisplayBacklightSource.watts(slider: 1, scale: 1) - 3.70) < 0.01)
+        #expect(abs(DisplayBacklightSource.watts(slider: 1, scale: 1) - 5.035) < 0.01)
         #expect(DisplayBacklightSource.watts(slider: 0.5, scale: 1) < DisplayBacklightSource.watts(slider: 0.75, scale: 1))
     }
 }

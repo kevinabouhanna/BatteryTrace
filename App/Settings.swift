@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import PowerSources
 import Sampling
 import ServiceManagement
 
@@ -44,6 +45,16 @@ final class SettingsStore: ObservableObject {
     @Published var alertThresholdWatts: Double {
         didSet { defaults.set(alertThresholdWatts, forKey: "alertThresholdWatts") }
     }
+    /// This Mac's measured display curve (Settings › Calibrate…), or nil.
+    @Published var displayCalibration: DisplayCalibration? {
+        didSet {
+            if let displayCalibration, let data = try? JSONEncoder().encode(displayCalibration) {
+                defaults.set(data, forKey: "displayCalibration")
+            } else {
+                defaults.removeObject(forKey: "displayCalibration")
+            }
+        }
+    }
     @Published var closedInterval: Double {
         didSet { defaults.set(closedInterval, forKey: "closedInterval") }
     }
@@ -57,6 +68,7 @@ final class SettingsStore: ObservableObject {
         showsMenuBarIcon = defaults.object(forKey: "showsMenuBarIcon") == nil ? true : defaults.bool(forKey: "showsMenuBarIcon")
         countsBilledEnergy = defaults.object(forKey: "countsBilledEnergy") == nil ? true : defaults.bool(forKey: "countsBilledEnergy")
         notifiesHungryApps = defaults.bool(forKey: "notifiesHungryApps")
+        displayCalibration = defaults.data(forKey: "displayCalibration").flatMap { try? JSONDecoder().decode(DisplayCalibration.self, from: $0) }
         let threshold = defaults.double(forKey: "alertThresholdWatts")
         alertThresholdWatts = Self.alertThresholds.contains(threshold) ? threshold : 2
         let closed = defaults.double(forKey: "closedInterval")
