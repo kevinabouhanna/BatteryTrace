@@ -19,6 +19,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// Opens Settings, or its About pane. Set by `AppDelegate`.
     var openSettings: () -> Void = {}
     var openAbout: () -> Void = {}
+    var exportHistory: () -> Void = {}
     /// The Settings window while it's open, which the popover leaves where it is.
     var openSettingsWindow: () -> NSWindow? = { nil }
 
@@ -119,6 +120,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             menu.addItem(item)
         }
         if !menu.items.isEmpty { menu.addItem(.separator()) }
+        menu.addItem(withTitle: "Export History…", action: #selector(menuExport), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Settings…", action: #selector(menuSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "About Battery Trace", action: #selector(menuAbout), keyEquivalent: "").target = self
         menu.addItem(.separator())
@@ -150,6 +152,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     @objc private func menuSettings() { openSettings() }
     @objc private func menuAbout() { openAbout() }
+    @objc private func menuExport() { exportHistory() }
 
     // MARK: Popover
 

@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = StatusItemController(model: model)
         statusItem.openSettings = { [weak self] in self?.showSettings() }
         statusItem.openAbout = { [weak self] in self?.showAbout() }
+        statusItem.exportHistory = { [weak self] in self?.exportHistory() }
         statusItem.openSettingsWindow = { [weak self] in self?.openSettingsWindow }
         conditions = SystemConditions(engine: model.engine, history: model.history)
         model.start()
@@ -51,6 +52,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         model?.history.flushNow()
+    }
+
+    // MARK: Export
+
+    /// Asks for a folder, writes the history there as two CSV files, and
+    /// shows them in Finder.
+    @objc func exportHistory() {
+        statusItem.closePopover()
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = "Export"
+        panel.message = "Choose a folder for two CSV files: energy by app, and the Mac's totals and parts, minute by minute."
+        panel.directoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let directory = panel.url else { return }
+        model.history.exportCSV(to: directory) { result in
+            MainActor.assumeIsolated {
+                switch result {
+                case .success(let files):
+                    NSWorkspace.shared.activateFileViewerSelecting(files)
+                case .failure(let error):
+                    let alert = NSAlert(error: error)
+                    alert.messageText = "Battery Trace couldn't export its history"
+                    alert.runModal()
+                }
+            }
+        }
     }
 
     // MARK: Settings window
@@ -84,7 +114,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func makeSettings() -> SettingsWindowController {
-        let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin)
+        let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin,
+                                                onExport: { [weak self] in self?.exportHistory() })
         settings.window.delegate = self
         settings.highestTop = { [weak self] screen in
             screen.frame.maxY - (self?.statusItem.menuBarHeight(on: screen) ?? 0)

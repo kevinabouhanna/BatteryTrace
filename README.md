@@ -107,6 +107,7 @@ bttrace sources                # what each data source found on this Mac
 bttrace sample --processes     # three 5 s intervals, attributed like the app does
 bttrace totals                 # minute by minute, against the battery gauge
 bttrace cost                   # what sampling costs, per tick and per minute
+bttrace export --to ~/Desktop  # the app's history as two CSV files
 make validate                  # rank apps against top's Energy Impact (no password)
 make validate-powermetrics     # against sudo powermetrics, four scenarios (asks for your password)
 make measure                   # the built app's own CPU, Energy Impact and memory
@@ -177,7 +178,9 @@ Validation results: [docs/VALIDATION.md](docs/VALIDATION.md).
 ## Privacy
 
 No network access, no telemetry, no account. History stays in the SQLite file
-above; delete it to start over.
+above; delete it to start over. **Export History…** (in the right-click menu and
+Settings › General) writes it as two CSV files: energy by app, and the Mac's
+totals and parts, minute by minute.
 
 ## Recommended next features
 
@@ -188,13 +191,10 @@ above; delete it to start over.
    behalf back to that app, using the kernel's `energy_billed_to_me` counters.
 3. **Notifications for battery-hungry apps.** For example: "Chrome has used 18%
    of your battery in the last hour".
-4. **Export history to CSV.**
-5. **Per-tab browser attribution.** Safari's and Chrome's renderers carry their
-   tab in their process names or arguments.
-6. **Per-model display calibration.** Ship curves for each MacBook panel, and
+4. **Per-model display calibration.** Ship curves for each MacBook panel, and
    model external displays and HDR.
-7. **Charging history and battery-health trend.**
-8. **Signed, notarized builds and an update channel.**
+5. **Charging history and battery-health trend.**
+6. **Signed, notarized builds and an update channel.**
 
 ## Project layout
 
