@@ -57,7 +57,7 @@ of power** there too; macOS asks for permission to show notifications.
 
 **Check for Updates…** in the right-click menu asks GitHub whether there's a
 newer version, and shows what's new. To have it look once a day, turn on
-**Settings › About › Check automatically once a day**; it's off until you do.
+**Settings › General › Check automatically once a day**; it's off until you do.
 Nothing installs by itself: **Download** opens the new disk image.
 
 Drag Battery Trace into Applications again, choosing **Replace**. Your settings
@@ -127,7 +127,7 @@ make measure                   # the built app's own CPU, Energy Impact and memo
 | **Child processes** | That app's CPU share, split by each process's own energy counter. The rest is "Other or exited processes". | Estimated |
 | **System / Unattributed** | Everything that isn't an app: display, memory, other chip blocks, and the measured power no counter accounts for | Measured, except the display |
 | **CPU, GPU, Neural Engine, Memory** | The chip's energy counters (IOReport, PMP group) | Measured by the chip's power manager |
-| **Display backlight** | Brightness mapped to watts by a curve fitted against the power sensor: this Mac's own after **Settings › Calibrate…**, otherwise a MacBook Air's, scaled | **Estimate** (labelled) |
+| **Display backlight** | Brightness mapped to watts by a curve fitted against the power sensor: this Mac's own after **Settings › Measurement › Calibrate…**, otherwise a MacBook Air's, scaled | **Estimate** (labelled) |
 | **Display controller, other chip blocks** | The chip's display pipes; video codecs, image processor, always-on blocks | Measured |
 | **Unattributed** | Measured total minus every component: Wi-Fi, SSD, audio, panel electronics, power conversion | Measured remainder |
 | **Totals for 5 min, 1 hour, 24 hours** | The battery gauge's own running averages when they cover the window, otherwise the power sensor | Measured |
@@ -172,7 +172,7 @@ All are looked up at run time. A missing one hides its metric; the app doesn't c
   Battery Trace to about 1%. Why the per-process sampler adds to it isn't
   pinned down yet. See [docs/VALIDATION.md](docs/VALIDATION.md) §3.
 - **The display estimate is a model.** Out of the box it's a MacBook Air's
-  curve scaled to your panel; **Settings › General › Display › Calibrate…**
+  curve scaled to your panel; **Settings › Measurement › Display › Calibrate…**
   measures your own in a minute. It doesn't model HDR/XDR boost (it says when
   HDR is showing) or ProMotion.
 - **Unattributed is typically 40–50% at light load,** and more while
@@ -189,7 +189,7 @@ notifications. Battery Trace goes online only to ask GitHub which version is
 newest: when you choose **Check for Updates…**, or once a day if you turn that
 on. That one request carries nothing about your Mac. History stays in the SQLite file
 above; delete it to start over. **Export History…** (in the right-click menu and
-Settings › General) writes it as two CSV files: energy by app, and the Mac's
+Settings › History) writes it as two CSV files: energy by app, and the Mac's
 totals and parts, minute by minute.
 
 ## Recommended next features

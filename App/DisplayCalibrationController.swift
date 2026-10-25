@@ -1,7 +1,7 @@
 import AppKit
 import PowerSources
 
-/// Runs Settings › Calibrate… off the main thread and reports progress.
+/// Runs Settings › Measurement › Calibrate… off the main thread and reports progress.
 @MainActor
 final class DisplayCalibrationController: ObservableObject {
     enum State: Equatable {
@@ -26,7 +26,7 @@ final class DisplayCalibrationController: ObservableObject {
     func start() {
         let alert = NSAlert()
         alert.messageText = "Calibrate the display estimate?"
-        alert.informativeText = "For about a minute, the built-in display dims and brightens while Battery Trace watches the Mac's power. "
+        alert.informativeText = "For under two minutes, the built-in display dims and brightens while Battery Trace watches the Mac's power. "
             + "Leave the Mac idle until it's done. Your brightness is put back afterwards."
         alert.addButton(withTitle: "Calibrate")
         alert.addButton(withTitle: "Cancel")

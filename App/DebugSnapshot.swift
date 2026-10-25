@@ -21,12 +21,13 @@ enum DebugSnapshot {
             }
             let launchAtLogin = LaunchAtLogin()
             let panes: [(String, AnyView)] = [
-                ("settings-general", AnyView(GeneralSettingsPane(settings: model.settings, launchAtLogin: launchAtLogin, alerts: PowerAlerts(settings: model.settings),
-                                                                calibration: DisplayCalibrationController(settings: model.settings)))),
-                ("settings-about", AnyView(AboutSettingsPane(settings: model.settings, updates: updates))),
+                ("settings-general", AnyView(GeneralSettingsPane(settings: model.settings, launchAtLogin: launchAtLogin, alerts: PowerAlerts(settings: model.settings), updates: updates))),
+                ("settings-measurement", AnyView(MeasurementSettingsPane(settings: model.settings, calibration: DisplayCalibrationController(settings: model.settings)))),
+                ("settings-history", AnyView(HistorySettingsPane())),
+                ("settings-about", AnyView(AboutSettingsPane())),
             ]
             for (name, pane) in panes {
-                let view = NSHostingView(rootView: pane.background(Color(nsColor: .windowBackgroundColor)))
+                let view = NSHostingView(rootView: pane.frame(width: SettingsMetrics.paneWidth).background(Color(nsColor: .windowBackgroundColor)))
                 view.frame = NSRect(origin: .zero, size: view.fittingSize)
                 let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
                 window.contentView = view

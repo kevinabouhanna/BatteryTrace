@@ -4,7 +4,7 @@ import Updates
 /// Check for Updates…, and the optional once-a-day check.
 ///
 /// Nothing here goes online by itself unless the user turned the daily check
-/// on in Settings › About. An update is never installed: Download opens the
+/// on in Settings › General. An update is never installed: Download opens the
 /// disk image in the browser, as the first download did.
 @MainActor
 final class UpdateChecker: ObservableObject {
