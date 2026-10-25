@@ -37,7 +37,7 @@ enum CostCommand {
             guard let report = pipeline.tick(detailed: detailed) else { continue }
             full.append(Double(report.samplingCPUNS) / 1e6)
             var stages = pipeline.lastTimings
-            if let metrics = pipeline.provider as? UnprivilegedPowerMetrics {
+            if let metrics = pipeline.unprivileged {
                 stages = stages.filter { $0.stage != "provider" }.map { ("  " + $0.stage, $0.ns) } + metrics.lastTimings.map { ("provider: " + $0.stage, $0.ns) }
             }
             for (stage, ns) in stages {
@@ -46,7 +46,7 @@ enum CostCommand {
             }
         }
 
-        if let metrics = pipeline.provider as? UnprivilegedPowerMetrics {
+        if let metrics = pipeline.unprivileged {
             print("Coalitions read on the last tick: \(metrics.lastCoalitionReads.read) of \(metrics.lastCoalitionReads.wanted)")
             for source in metrics.componentSources { print("\(source.sourceName): " + source.diagnostics.joined(separator: "; ")) }
         }

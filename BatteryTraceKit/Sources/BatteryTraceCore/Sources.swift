@@ -52,6 +52,9 @@ public struct PowerMetricsSample: Sendable {
     public var processes: [ProcessRecord]
     /// Usage per PID over the interval, for processes whose counters could be read.
     public var processDeltas: [Int32: UsageCounters]
+    /// The CPU component is Apple's `powermetrics` figure, from the
+    /// privileged helper, rather than the chip's cluster counters.
+    public var cpuFromPowermetrics = false
 
     public init(endUptimeNS: UInt64, durationSeconds: Double, components: [ComponentEnergy],
                 coalitions: [UInt64: UsageCounters], processes: [ProcessRecord],
@@ -67,10 +70,11 @@ public struct PowerMetricsSample: Sendable {
 
 /// The seam for a more accurate, privileged source.
 ///
-/// The MVP ships one implementation, `UnprivilegedPowerMetrics`, built from
-/// IOReport, coalitions and `proc_pid_rusage`, with no root. A privileged
-/// helper (an `SMAppService` daemon wrapping `powermetrics`) would implement
-/// this same protocol, and attribution, storage and UI would not change.
+/// `UnprivilegedPowerMetrics` is built from IOReport, coalitions and
+/// `proc_pid_rusage`, with no root. `PrivilegedPowerMetrics` wraps it and,
+/// when the optional root helper is installed, adds Apple's CPU figure from
+/// `powermetrics` and every process's counters. Attribution, storage and UI
+/// are the same for both.
 public protocol PowerMetricsProvider: AnyObject {
     var providerName: String { get }
     var isAvailable: Bool { get }

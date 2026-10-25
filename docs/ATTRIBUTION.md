@@ -75,7 +75,7 @@ driver costs about 0.65 ms per read.
 P_backlight(s) = k × (−0.085·s + 5.12·s²)  W      s = brightness slider, 0…1
 ```
 
-- **This Mac's own curve, when it has one.** Settings › General › Display ›
+- **This Mac's own curve, when it has one.** Settings › Accuracy › Display ›
   **Calibrate…** steps the slider for about a minute with the Mac idle, reads
   `PSTR`, subtracts the chip's measured energy, and fits
   `rest = a + b·s + c·s²`. A fit quality (R²) below 0.6 means something else was
@@ -190,7 +190,8 @@ E_cpu(process p) = E_cpu(app) × ri_energy_nj(p) / max(coalition energy, Σ read
 Whatever the readable processes don't account for becomes one **"Other or
 exited processes"** row, so the rows always add up to the app. That remainder
 is other users' processes, which `proc_pid_rusage` refuses without root, and
-helpers that exited mid-interval. Over longer windows, processes are merged
+helpers that exited mid-interval. With the optional privileged helper, other
+users' processes are read too, so only exited helpers are left in that row. Over longer windows, processes are merged
 by name, since PIDs come and go.
 
 ## Known error sources
@@ -202,6 +203,15 @@ by name, since PIDs come and go.
    4-thread loop. That means our CPU row reads low by that much, which is a
    third of `powermetrics`' figure at idle. The rest isn't lost: it is part of
    Unattributed, within the measured total.
+
+   With the optional privileged helper, the CPU row is `powermetrics`' figure.
+   The helper keeps `powermetrics -i 0` running and sends it SIGINFO when
+   Battery Trace attributes, at the same moment as every other reading. Each
+   sample covers the time since the previous one, so it covers the same
+   interval. A sample whose length differs from the interval by more than
+   0.25 s or 5% (the first after the helper starts, or one that came late) is
+   not used, and that interval keeps PMP's figure. Either way nothing is
+   counted twice.
 2. **The CPU weights are a model.** CLPC estimates each thread's energy from
    its cluster, frequency and time. It is good at "who ran on the P-cores, and
    how hard", but it is not a meter.

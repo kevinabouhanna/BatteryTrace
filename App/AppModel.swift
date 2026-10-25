@@ -43,6 +43,8 @@ enum BatteryWindow: String, CaseIterable, Identifiable {
 final class AppModel: ObservableObject {
     @Published private(set) var reading: LiveReading?
     @Published private(set) var report: IntervalReport?
+    /// The privileged helper is installed and switched on.
+    @Published var usesHelper = false
     @Published private(set) var summary: WindowSummary?
     @Published private(set) var totalSeries: [Double] = []
     @Published private(set) var componentSeries: [ComponentID: [Double]] = [:]

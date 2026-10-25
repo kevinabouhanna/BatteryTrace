@@ -8,7 +8,7 @@ UNIVERSAL_APP := build/DerivedDataUniversal/Build/Products/Release/Battery Trace
 BUILD_NUMBER := $(shell git rev-list --count HEAD 2>/dev/null || echo 1)
 VERSION_SETTINGS := CURRENT_PROJECT_VERSION=$(BUILD_NUMBER) $(if $(MARKETING_VERSION),MARKETING_VERSION=$(MARKETING_VERSION),)
 
-.PHONY: app run install universal dmg cli test smoke validate validate-powermetrics totals cost measure icon clean
+.PHONY: app run install install-helper uninstall-helper universal dmg cli test smoke validate validate-powermetrics totals cost measure icon clean
 
 # The menu bar app, Release, for this Mac, signed to run locally.
 app:
@@ -26,6 +26,14 @@ install: app
 	rm -rf "/Applications/Battery Trace.app"
 	ditto "$(APP)" "/Applications/Battery Trace.app"
 	open "/Applications/Battery Trace.app"
+
+# The optional privileged helper, from the built app, as Settings › Accuracy
+# installs it. Asks for your password.
+install-helper: app
+	sudo /bin/bash "$(APP)/Contents/Resources/helper-setup.sh" install "$(APP)/Contents/MacOS/app.batterytrace.helper" "$(USER)"
+
+uninstall-helper:
+	sudo /bin/bash App/Resources/helper-setup.sh uninstall
 
 # Apple silicon and Intel in one app, as releases ship.
 universal:

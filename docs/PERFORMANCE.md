@@ -70,6 +70,23 @@ Traces are in `validation/instruments/`.
   table for a process. Energy Impact from `top` (above) is the same figure
   Activity Monitor shows. Energy Log is iOS-only.
 
+### With the optional privileged helper
+
+The helper and its `powermetrics` are separate root processes, so the figures
+above don't include them. Measured as root on the same Mac:
+
+| | `powermetrics --samplers cpu_power -i 0` |
+|---|---:|
+| Starting | 0.67 s of CPU, once per Battery Trace launch |
+| One sample (on request) | about 10 ms of CPU; the reply arrives in 12–28 ms |
+| Between samples | nothing: no timer, 0 s of CPU over 30 s idle |
+| Memory | 1.9 MB |
+
+Battery Trace asks for one sample per attribution. That is once a minute with
+the popover closed, about 0.02% of one core, and every 2 s with it open, about
+0.5%. The CPU sampler alone is used: adding the GPU and ANE samplers made each
+sample cost about 14 ms instead.
+
 ## What keeps it light
 
 1. **Two speeds.** The menu bar needs one sensor read every 5 s (0.35 ms).

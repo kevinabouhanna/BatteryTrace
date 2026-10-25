@@ -29,9 +29,11 @@ enum SampleCommand {
         let showProcesses = arguments.flag("--processes")
         let json = arguments.flag("--json")
         let billing = !arguments.flag("--no-billing")
+        let helper = arguments.flag("--helper")
 
         let pipeline = SamplingPipeline.standard()
         pipeline.countsBilledEnergy = billing
+        pipeline.privileged?.usesHelper = helper
         _ = pipeline.tick(detailed: true)
         var ledger = EnergyLedger()
         for index in 0..<count {
@@ -64,7 +66,8 @@ enum SampleCommand {
         }
         print("Components       \(w(report.componentJoules))")
         for component in report.components {
-            let mark = component.provenance == .estimated ? "  (estimate)" : ""
+            var mark = component.provenance == .estimated ? "  (estimate)" : ""
+            if component.id == .cpu, report.cpuFromPowermetrics { mark = "  (powermetrics)" }
             print("  \(component.id.displayName.padding(toLength: 22, withPad: " ", startingAt: 0)) \(w(component.joules))\(mark)")
         }
         if let unattributed = report.unattributedJoules {
@@ -129,6 +132,7 @@ struct JSONLine: Codable {
     var unattributedWatts: Double?
     var apps: [App]
     var selfCPUms: Double
+    var cpuFromPowermetrics: Bool?
 
     init(_ report: IntervalReport) {
         let s = report.durationSeconds
@@ -147,6 +151,7 @@ struct JSONLine: Codable {
                 cpuTimeMsPerS: Double(app.usage.cpuTimeNS) / 1e6 / s)
         }
         selfCPUms = Double(report.samplingCPUNS) / 1e6
+        cpuFromPowermetrics = report.cpuFromPowermetrics
     }
 
     func encoded() -> String {

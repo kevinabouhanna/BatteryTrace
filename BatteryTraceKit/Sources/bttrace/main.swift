@@ -29,15 +29,18 @@ case "export":
     ExportCommand.run(&arguments)
 case "updates":
     UpdatesCommand.run(&arguments)
+case "helper":
+    HelperCommand.run(&arguments)
 default:
     print("""
     usage: bttrace <command> [options]
 
       sources                          what each data source found on this Mac
-      sample [--interval 5] [--count 3] [--top 12] [--processes] [--json] [--no-billing]
+      sample [--interval 5] [--count 3] [--top 12] [--processes] [--json] [--no-billing] [--helper]
                                        sample and attribute, like the app does
+                                       (--helper: with the privileged helper, if installed)
       cost [--interval 2] [--count 15] what sampling costs Battery Trace, per tick and per minute
-      totals [--minutes 5]             minute-by-minute totals against the battery gauge
+      totals [--minutes 5] [--helper]  minute-by-minute totals against the battery gauge
       export [--to DIR] [--days 7]     the app's history as two CSV files
       stress cpu [--threads N] [--seconds 30]
       stress gpu [--seconds 30]        load generators for validation
@@ -47,6 +50,8 @@ default:
                                        compare a `sample --json` run with `powermetrics -f plist`
       calibrate-display [--settle 6]   fit the backlight power model (changes brightness, then restores it)
       updates [--as 0.6.0]             what Check for Updates… would say (one request to GitHub)
+      helper [--count 3] [--interval 2]
+                                       whether the privileged helper is installed, and what it returns
     """)
 }
 

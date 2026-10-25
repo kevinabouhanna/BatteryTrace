@@ -20,7 +20,6 @@ struct GeneralSettingsPane: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var launchAtLogin: LaunchAtLogin
     @ObservedObject var alerts: PowerAlerts
-    @ObservedObject var calibration: DisplayCalibrationController
     var onExport: () -> Void = {}
 
     var body: some View {
@@ -117,21 +116,6 @@ struct GeneralSettingsPane: View {
                 SettingsFootnote("Apps are attributed once a minute while the popover is closed, and at every reading while it's open. Sampling slows in Low Power Mode and while the display sleeps, and stops while the Mac sleeps. Nothing is lost by sampling less often: every counter is cumulative.")
             }
 
-            if calibration.isAvailable {
-                Section {
-                    LabeledContent("Backlight estimate") {
-                        Text(settings.displayCalibration.map { "Calibrated on this Mac, \($0.date.formatted(date: .abbreviated, time: .omitted))" }
-                             ?? "Scaled from a MacBook Air")
-                            .foregroundStyle(.secondary)
-                    }
-                    calibrationRow
-                } header: {
-                    Text("Display")
-                } footer: {
-                    SettingsFootnote("No sensor measures the display, so its power is an estimate from brightness. Calibrating measures this Mac's own panel: for about a minute the display dims and brightens while the Mac stays idle, then your brightness is put back.")
-                }
-            }
-
             Section {
                 LabeledContent("Export as CSV") {
                     Button("Export…", action: onExport)
@@ -148,6 +132,105 @@ struct GeneralSettingsPane: View {
             }
         }
         .settingsForm()
+    }
+
+    @ViewBuilder
+    private var loginStatus: some View {
+        switch launchAtLogin.status {
+        case .requiresApproval:
+            LabeledContent {
+                Button("Open Login Items") { launchAtLogin.openLoginItemsSettings() }
+            } label: {
+                SettingsRowDetail("Waiting for your approval in System Settings › General › Login Items.")
+            }
+        case .notFound where launchAtLogin.attempted:
+            SettingsRowDetail("macOS can't find this copy of Battery Trace to open at login. Move it to Applications and try again.")
+        default:
+            if let error = launchAtLogin.lastError { SettingsRowDetail(error) }
+        }
+    }
+}
+
+// MARK: - Accuracy
+
+/// What makes the figures better on this Mac: calibrating the display
+/// estimate, and the optional privileged helper.
+struct AccuracySettingsPane: View {
+    @ObservedObject var settings: SettingsStore
+    @ObservedObject var calibration: DisplayCalibrationController
+    @ObservedObject var helper: PrivilegedHelperController
+
+    var body: some View {
+        Form {
+            if calibration.isAvailable {
+                Section {
+                    LabeledContent("Backlight estimate") {
+                        Text(settings.displayCalibration.map { "Calibrated on this Mac, \($0.date.formatted(date: .abbreviated, time: .omitted))" }
+                             ?? "Scaled from a MacBook Air")
+                            .foregroundStyle(.secondary)
+                    }
+                    calibrationRow
+                } header: {
+                    Text("Display")
+                } footer: {
+                    SettingsFootnote("No sensor measures the display, so its power is an estimate from brightness. Calibrating measures this Mac's own panel: for under two minutes the display dims and brightens while the Mac stays idle, then your brightness is put back.")
+                }
+            }
+
+            Section {
+                LabeledContent("Status") {
+                    Text(helperStatus).foregroundStyle(.secondary)
+                }
+                helperRow
+            } header: {
+                Text("Privileged helper")
+            } footer: {
+                SettingsFootnote("Optional. A small helper that runs as root while Battery Trace runs, and only then. It gives the CPU row Apple's own figure, from powermetrics, instead of the chip's cluster counters, which read about 0.3 W lower; and it gives every process in an app its own figure. It changes nothing on your Mac. Installing asks for your password once.")
+            }
+        }
+        .settingsForm()
+        .onAppear { helper.refresh() }
+    }
+
+    private var helperStatus: String {
+        switch helper.installation {
+        case nil: "Checking…"
+        case .missing?: "Not installed"
+        case .current?: "Installed and in use"
+        case .outdated?: "Installed by another version of Battery Trace"
+        case .notAnswering?: "Installed, but not answering"
+        }
+    }
+
+    @ViewBuilder
+    private var helperRow: some View {
+        LabeledContent {
+            HStack {
+                switch helper.installation {
+                case .missing?:
+                    Button("Install…") { helper.install() }.disabled(!helper.canInstall)
+                case .current?:
+                    Button("Uninstall…") { helper.uninstall() }
+                case .outdated?:
+                    Button("Uninstall…") { helper.uninstall() }
+                    Button("Update…") { helper.install() }.disabled(!helper.canInstall)
+                case .notAnswering?:
+                    Button("Uninstall…") { helper.uninstall() }
+                    Button("Reinstall…") { helper.install() }.disabled(!helper.canInstall)
+                case nil:
+                    EmptyView()
+                }
+            }
+            .disabled(helper.isBusy)
+        } label: {
+            if let message = helper.message {
+                SettingsRowDetail(message)
+            } else if !helper.canInstall, helper.installation != .current {
+                SettingsRowDetail("This copy of Battery Trace doesn't include the helper.")
+            } else {
+                Text("Apple's CPU figure and every process")
+            }
+        }
     }
 
     @ViewBuilder
@@ -185,21 +268,6 @@ struct GeneralSettingsPane: View {
         }
     }
 
-    @ViewBuilder
-    private var loginStatus: some View {
-        switch launchAtLogin.status {
-        case .requiresApproval:
-            LabeledContent {
-                Button("Open Login Items") { launchAtLogin.openLoginItemsSettings() }
-            } label: {
-                SettingsRowDetail("Waiting for your approval in System Settings › General › Login Items.")
-            }
-        case .notFound where launchAtLogin.attempted:
-            SettingsRowDetail("macOS can't find this copy of Battery Trace to open at login. Move it to Applications and try again.")
-        default:
-            if let error = launchAtLogin.lastError { SettingsRowDetail(error) }
-        }
-    }
 }
 
 // MARK: - About

@@ -10,6 +10,7 @@ enum TotalsCommand {
         let minutes = arguments.int("--minutes", default: 5)
         let live = arguments.double("--live", default: 2)
         let pipeline = SamplingPipeline.standard()
+        pipeline.privileged?.usesHelper = arguments.flag("--helper")
         _ = pipeline.tick(detailed: false)
         print("minute  power    sensor  gauge   components  unattributed   CPU    display(est)")
         var rows: [(sensor: Double, gauge: Double?, components: Double)] = []

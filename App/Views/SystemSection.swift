@@ -43,7 +43,7 @@ struct SystemSection: View {
                     name: component.id.displayName,
                     watts: component.joules / seconds,
                     estimated: component.provenance == .estimated,
-                    caption: caption(for: component.id, system: report.system),
+                    caption: caption(for: component.id, report: report),
                     series: series[component.id] ?? []
                 )
             }
@@ -61,7 +61,8 @@ struct SystemSection: View {
         }
     }
 
-    private func caption(for id: ComponentID, system: SystemSnapshot) -> String? {
+    private func caption(for id: ComponentID, report: IntervalReport) -> String? {
+        let system = report.system
         switch id {
         case .displayBacklight:
             var parts: [String] = []
@@ -70,7 +71,12 @@ struct SystemSection: View {
             if DisplayConditions.builtInShowsHDR { parts.append("HDR on: may read low") }
             return parts.joined(separator: " · ")
         case .cpu:
-            return system.cpuLoad.perCore.isEmpty ? nil : String(format: "Load %.0f%% across %d cores", system.cpuLoad.average * 100, system.cpuLoad.perCore.count)
+            var parts: [String] = []
+            if !system.cpuLoad.perCore.isEmpty {
+                parts.append(String(format: "Load %.0f%% across %d cores", system.cpuLoad.average * 100, system.cpuLoad.perCore.count))
+            }
+            if report.cpuFromPowermetrics { parts.append("from powermetrics") }
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
         case .memory:
             return "DRAM and its controller"
         case .displayController:

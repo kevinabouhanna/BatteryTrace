@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var calibration: DisplayCalibrationController!
     private var updates: UpdateChecker!
     private var subscriptions: Set<AnyCancellable> = []
+    private let helper = PrivilegedHelperController()
     /// Built when Settings opens and released when it closes, so a closed
     /// Settings holds no view hierarchy.
     private var settingsController: SettingsWindowController?
@@ -50,6 +51,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updates.applySetting() }
             .store(in: &subscriptions)
+        helper.onChange = { [weak self] use, restart in
+            self?.model.engine.setUsesHelper(use, restart: restart)
+            self?.model.usesHelper = use
+        }
+        helper.refresh()
         alerts.onOpen = { [weak self] in self?.statusItem.showPopover() }
         model.onReport = { [weak self] report in self?.alerts.receive(report) }
         model.start()
@@ -66,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if UserDefaults.standard.bool(forKey: "openPopover") { statusItem.showPopover() }
         if UserDefaults.standard.bool(forKey: "openSettings") { showSettings() }
         if UserDefaults.standard.bool(forKey: "testNotification") { alerts.runDeliveryTest() }
-        if let directory = UserDefaults.standard.string(forKey: "snapshotTo") { DebugSnapshot.run(model: model, updates: updates, to: directory) }
+        if let directory = UserDefaults.standard.string(forKey: "snapshotTo") { DebugSnapshot.run(model: model, updates: updates, helper: helper, to: directory) }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -138,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func makeSettings() -> SettingsWindowController {
         let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin, alerts: alerts, calibration: calibration,
-                                                updates: updates, onExport: { [weak self] in self?.exportHistory() })
+                                                updates: updates, helper: helper, onExport: { [weak self] in self?.exportHistory() })
         settings.window.delegate = self
         settings.highestTop = { [weak self] screen in
             screen.frame.maxY - (self?.statusItem.menuBarHeight(on: screen) ?? 0)

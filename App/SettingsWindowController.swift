@@ -3,11 +3,12 @@ import SwiftUI
 
 /// One area of Settings, a button in the window's toolbar.
 enum SettingsPane: String, CaseIterable {
-    case general, about
+    case general, accuracy, about
 
     var title: String {
         switch self {
         case .general: "General"
+        case .accuracy: "Accuracy"
         case .about: "About"
         }
     }
@@ -15,6 +16,7 @@ enum SettingsPane: String, CaseIterable {
     var symbol: String {
         switch self {
         case .general: "gearshape"
+        case .accuracy: "scope"
         case .about: "info.circle"
         }
     }
@@ -47,7 +49,7 @@ final class SettingsWindowController: NSObject {
     var highestTop: (NSScreen) -> CGFloat = { $0.visibleFrame.maxY }
 
     init(settings: SettingsStore, launchAtLogin: LaunchAtLogin, alerts: PowerAlerts, calibration: DisplayCalibrationController,
-         updates: UpdateChecker, onExport: @escaping () -> Void) {
+         updates: UpdateChecker, helper: PrivilegedHelperController, onExport: @escaping () -> Void) {
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: SettingsMetrics.paneWidth, height: 300),
                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
         super.init()
@@ -57,7 +59,8 @@ final class SettingsWindowController: NSObject {
         for pane in SettingsPane.allCases {
             let host: NSHostingController<AnyView>
             switch pane {
-            case .general: host = NSHostingController(rootView: AnyView(GeneralSettingsPane(settings: settings, launchAtLogin: launchAtLogin, alerts: alerts, calibration: calibration, onExport: onExport)))
+            case .general: host = NSHostingController(rootView: AnyView(GeneralSettingsPane(settings: settings, launchAtLogin: launchAtLogin, alerts: alerts, onExport: onExport)))
+            case .accuracy: host = NSHostingController(rootView: AnyView(AccuracySettingsPane(settings: settings, calibration: calibration, helper: helper)))
             case .about: host = NSHostingController(rootView: AnyView(AboutSettingsPane(settings: settings, updates: updates)))
             }
             host.sizingOptions = [.preferredContentSize]

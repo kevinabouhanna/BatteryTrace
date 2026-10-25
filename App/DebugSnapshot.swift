@@ -5,7 +5,7 @@ import SwiftUI
 /// `open "Battery Trace.app" --args -snapshotTo /some/dir`
 @MainActor
 enum DebugSnapshot {
-    static func run(model: AppModel, updates: UpdateChecker, to directory: String) {
+    static func run(model: AppModel, updates: UpdateChecker, helper: PrivilegedHelperController, to directory: String) {
         model.popoverWillShow()
         DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
             for tab in PopoverView.Tab.allCases {
@@ -21,8 +21,9 @@ enum DebugSnapshot {
             }
             let launchAtLogin = LaunchAtLogin()
             let panes: [(String, AnyView)] = [
-                ("settings-general", AnyView(GeneralSettingsPane(settings: model.settings, launchAtLogin: launchAtLogin, alerts: PowerAlerts(settings: model.settings),
-                                                                calibration: DisplayCalibrationController(settings: model.settings)))),
+                ("settings-general", AnyView(GeneralSettingsPane(settings: model.settings, launchAtLogin: launchAtLogin, alerts: PowerAlerts(settings: model.settings)))),
+                ("settings-accuracy", AnyView(AccuracySettingsPane(settings: model.settings, calibration: DisplayCalibrationController(settings: model.settings),
+                                                                  helper: helper))),
                 ("settings-about", AnyView(AboutSettingsPane(settings: model.settings, updates: updates))),
             ]
             for (name, pane) in panes {

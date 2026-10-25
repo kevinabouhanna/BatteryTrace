@@ -8,16 +8,48 @@
 
 /* Begin PBXBuildFile section */
 		B7A100000000000000000101 /* BatteryTraceKit in Frameworks */ = {isa = PBXBuildFile; productRef = B7A100000000000000000102 /* BatteryTraceKit */; };
+		B7A100000000000000000104 /* BatteryTraceHelperKit in Frameworks */ = {isa = PBXBuildFile; productRef = B7A100000000000000000105 /* BatteryTraceHelperKit */; };
+		B7A100000000000000000106 /* app.batterytrace.helper in Embed Helper */ = {isa = PBXBuildFile; fileRef = B7A100000000000000000202 /* app.batterytrace.helper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B7A100000000000000000B01 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B7A100000000000000000801 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B7A100000000000000000603;
+			remoteInfo = BatteryTraceHelper;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B7A100000000000000000703 /* Embed Helper */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				B7A100000000000000000106 /* app.batterytrace.helper in Embed Helper */,
+			);
+			name = "Embed Helper";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		B7A100000000000000000201 /* Battery Trace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Battery Trace.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B7A100000000000000000202 /* app.batterytrace.helper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = app.batterytrace.helper; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B7A100000000000000000301 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = App;
+			sourceTree = "<group>";
+		};
+		B7A100000000000000000302 /* Helper */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Helper;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +63,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B7A100000000000000000402 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7A100000000000000000104 /* BatteryTraceHelperKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				B7A100000000000000000301 /* App */,
+				B7A100000000000000000302 /* Helper */,
 				B7A100000000000000000502 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				B7A100000000000000000201 /* Battery Trace.app */,
+				B7A100000000000000000202 /* app.batterytrace.helper */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -60,10 +102,12 @@
 				B7A100000000000000000701 /* Sources */,
 				B7A100000000000000000401 /* Frameworks */,
 				B7A100000000000000000702 /* Resources */,
+				B7A100000000000000000703 /* Embed Helper */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B7A100000000000000000C01 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				B7A100000000000000000301 /* App */,
@@ -76,6 +120,28 @@
 			productReference = B7A100000000000000000201 /* Battery Trace.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B7A100000000000000000603 /* BatteryTraceHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7A100000000000000000903 /* Build configuration list for PBXNativeTarget "BatteryTraceHelper" */;
+			buildPhases = (
+				B7A100000000000000000704 /* Sources */,
+				B7A100000000000000000402 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B7A100000000000000000302 /* Helper */,
+			);
+			name = BatteryTraceHelper;
+			packageProductDependencies = (
+				B7A100000000000000000105 /* BatteryTraceHelperKit */,
+			);
+			productName = BatteryTraceHelper;
+			productReference = B7A100000000000000000202 /* app.batterytrace.helper */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -87,6 +153,9 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					B7A100000000000000000601 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					B7A100000000000000000603 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -109,6 +178,7 @@
 			projectRoot = "";
 			targets = (
 				B7A100000000000000000601 /* BatteryTrace */,
+				B7A100000000000000000603 /* BatteryTraceHelper */,
 			);
 		};
 /* End PBXProject section */
@@ -131,7 +201,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B7A100000000000000000704 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B7A100000000000000000C01 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B7A100000000000000000603 /* BatteryTraceHelper */;
+			targetProxy = B7A100000000000000000B01 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B7A100000000000000000A01 /* Debug */ = {
@@ -225,6 +310,38 @@
 			};
 			name = Release;
 		};
+		B7A100000000000000000A05 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LM_FILTER_WARNINGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = app.batterytrace.helper;
+				PRODUCT_NAME = app.batterytrace.helper;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		B7A100000000000000000A06 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LM_FILTER_WARNINGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = app.batterytrace.helper;
+				PRODUCT_NAME = app.batterytrace.helper;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -246,6 +363,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		B7A100000000000000000903 /* Build configuration list for PBXNativeTarget "BatteryTraceHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B7A100000000000000000A05 /* Debug */,
+				B7A100000000000000000A06 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -259,6 +385,10 @@
 		B7A100000000000000000102 /* BatteryTraceKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = BatteryTraceKit;
+		};
+		B7A100000000000000000105 /* BatteryTraceHelperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BatteryTraceHelperKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

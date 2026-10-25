@@ -123,6 +123,8 @@ public struct IntervalReport: Sendable, Codable {
     public var telemetry: TelemetryWindow?
     /// CPU time Battery Trace itself spent producing this report.
     public var samplingCPUNS: UInt64 = 0
+    /// The CPU row is `powermetrics`' figure, from the privileged helper.
+    public var cpuFromPowermetrics = false
 
     public init(endUptimeNS: UInt64, endDate: Date, durationSeconds: Double, onExternalPower: Bool,
                 measuredJoules: Double?, measuredSource: TotalSource?, components: [ComponentEnergy],

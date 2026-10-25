@@ -24,6 +24,10 @@ public final class SamplingPipeline {
     public let detailSnapshots: [any SnapshotSource]
     /// The display model, to give it this Mac's calibration.
     public private(set) var display: DisplayBacklightSource?
+    /// The provider, when it can use the privileged helper.
+    public var privileged: PrivilegedPowerMetrics? { provider as? PrivilegedPowerMetrics }
+    /// The unprivileged readings, wrapped or not.
+    public var unprivileged: UnprivilegedPowerMetrics? { privileged?.base ?? provider as? UnprivilegedPowerMetrics }
 
     /// CPU time per stage of the last tick, for `bttrace cost`.
     public private(set) var lastTimings: [(stage: String, ns: UInt64)] = []
@@ -61,9 +65,10 @@ public final class SamplingPipeline {
         let smc = SMCSystemPowerSource()
         let battery = BatteryGaugeSource(sharing: smc)
         let display = DisplayBacklightSource()
-        let metrics = UnprivilegedPowerMetrics.standard(display: display)
+        let base = UnprivilegedPowerMetrics.standard(display: display)
+        let metrics = PrivilegedPowerMetrics(base: base)
         var weighted: Set<AppSplit> = [.cpu]
-        if metrics.gpuWeightsAreEnergy { weighted.formUnion([.gpu, .ane]) }
+        if base.gpuWeightsAreEnergy { weighted.formUnion([.gpu, .ane]) }
         let names = BundleNameCache()
         let pipeline = SamplingPipeline(
             provider: metrics, live: smc, telemetry: battery,
@@ -177,6 +182,7 @@ public final class SamplingPipeline {
         ))
         lap("attribution")
         report.telemetry = window
+        report.cpuFromPowermetrics = sample.cpuFromPowermetrics
         report.samplingCPUNS = Clock.threadCPUTimeNS() &- cpuStart
         return report
     }

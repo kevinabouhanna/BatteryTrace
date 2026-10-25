@@ -27,7 +27,9 @@ memory and the rest of the chip.
   labels them as estimates. Whatever no counter accounts for stays in its own
   Unattributed row, so the rows always add up to what was measured. See
   [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md).
-- **No root, no permissions, no dependencies.**
+- **No root, no permissions, no dependencies.** An optional helper adds
+  Apple's own CPU figure; it is the only part that runs as root, and only if
+  you install it.
 
 <p align="center"><img src="docs/images/popover-system.png" width="360" alt="The popover's System tab on a MacBook Air: 80% battery, on the power adapter, drawing 6.19 W. The breakdown shows CPU 305 mW, GPU 65 mW, memory 212 mW, display backlight about 1.18 W (an estimate, not calibrated on this Mac), display controller 41 mW, other chip blocks 100 mW and 2.87 W unattributed, out of 4.77 W measured."></p>
 
@@ -143,9 +145,40 @@ make measure                   # the built app's own CPU, Energy Impact and memo
 | UI | `App/` | `NSStatusItem` and `NSPopover` with SwiftUI. Views exist only while the popover is open. |
 
 A new metric is one type conforming to `ComponentSource` (energy) or
-`SnapshotSource` (anything else). A privileged source, such as a future
-`powermetrics` helper, would conform to `PowerMetricsProvider` and replace the
-unprivileged one without other changes.
+`SnapshotSource` (anything else). The optional privileged helper plugs in as a
+`PowerMetricsProvider` (`PrivilegedPowerMetrics`, wrapping the unprivileged
+one), so attribution, storage and UI don't know which one ran.
+
+### The optional privileged helper
+
+**Settings › Accuracy › Privileged helper › Install…** asks for your password
+once and installs two files:
+
+- `/Library/PrivilegedHelperTools/app.batterytrace.helper`, owned by root;
+- `/etc/sudoers.d/batterytrace`, letting your account run exactly
+  `app.batterytrace.helper status` and `app.batterytrace.helper serve` without
+  a password. It is checked with `visudo -c` before it is installed.
+
+While Battery Trace runs, it starts `sudo -n app.batterytrace.helper serve`
+and talks to it over its stdin and stdout. Nothing else can reach it, and it
+exits when Battery Trace quits. It answers two read-only requests:
+
+- **A `powermetrics` sample.** It keeps one `powermetrics --samplers cpu_power
+  -i 0` running and takes a sample when Battery Trace attributes, so the
+  sample covers the same interval. The CPU row then shows Apple's figure,
+  marked "from powermetrics".
+- **`proc_pid_rusage` for given PIDs.** It reads other users' processes, so
+  every process in an app gets its own figure.
+
+It changes nothing on the Mac and runs nothing a caller names. There is no
+LaunchDaemon: it runs only while Battery Trace does. **Uninstall…** in the same
+place removes both files, as does `make uninstall-helper`. The installer is
+`App/Resources/helper-setup.sh`, and the helper's code is in
+`BatteryTraceKit/Sources/HelperServer`.
+
+It uses a sudoers rule rather than an `SMAppService` daemon because a daemon's
+XPC callers are checked by team identifier, and an ad-hoc-signed app has none.
+NetworkMonitor made the same choice for the same reason.
 
 ### Private interfaces, and what happens if Apple changes them
 
@@ -166,11 +199,12 @@ All are looked up at run time. A missing one hides its metric; the app doesn't c
 - **Work done on an app's behalf is counted for whoever did it.** WindowServer
   draws windows, `coreaudiod` mixes audio, and the video decoder decodes video.
   Under heavy GPU load, macOS charges WindowServer for much of the GPU's time.
-- **The CPU row reads about 0.3 W below `powermetrics`.** Apple has two CPU
-  energy counters; the one `powermetrics` uses is only refreshed for root.
-  The difference stays inside Unattributed.
+- **Without the helper, the CPU row reads about 0.3 W below `powermetrics`.**
+  Apple has two CPU energy figures, and the one `powermetrics` reports needs
+  root. The difference stays inside Unattributed. The optional helper (above)
+  gives the CPU row `powermetrics`' figure.
 - **The display estimate is a model.** Out of the box it's a MacBook Air's
-  curve scaled to your panel; **Settings › General › Display › Calibrate…**
+  curve scaled to your panel; **Settings › Accuracy › Display › Calibrate…**
   measures your own in a minute. It doesn't model HDR/XDR boost (it says when
   HDR is showing) or ProMotion.
 - **Unattributed is typically 40–50% at light load,** and more while
@@ -192,10 +226,7 @@ totals and parts, minute by minute.
 
 ## Recommended next features
 
-1. **An optional privileged helper** (an `SMAppService` daemon running
-   `powermetrics`), behind the existing `PowerMetricsProvider` protocol. It
-   would give per-process energy for every process, and Apple's own CPU figure.
-2. **A Developer ID.** The Release workflow already signs and notarizes when
+1. **A Developer ID.** The Release workflow already signs and notarizes when
    the signing secrets are set ([docs/RELEASING.md](docs/RELEASING.md)); then
    the "Open Anyway" step goes away.
 

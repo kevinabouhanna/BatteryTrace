@@ -27,6 +27,7 @@ public final class SamplingEngine: @unchecked Sendable {
     private var onLive: LiveHandler?
     private var countsBilledEnergy = true
     private var displayCalibration: DisplayCalibration?
+    private var usesHelper = false
 
     public init(policy: SamplingPolicy = SamplingPolicy(), makePipeline: @escaping @Sendable () -> SamplingPipeline = { .standard() }) {
         self.policy = policy
@@ -42,6 +43,7 @@ public final class SamplingEngine: @unchecked Sendable {
             if self.pipeline == nil { self.pipeline = self.makePipeline() }
             self.pipeline?.countsBilledEnergy = self.countsBilledEnergy
             self.pipeline?.display?.use(self.displayCalibration)
+            self.pipeline?.privileged?.usesHelper = self.usesHelper
             _ = self.pipeline?.tick(detailed: false) // primes every baseline
             if let reading = self.pipeline?.quickTick() { onLive(reading) }
             self.reschedule()
@@ -77,6 +79,17 @@ public final class SamplingEngine: @unchecked Sendable {
         queue.async {
             self.countsBilledEnergy = counts
             self.pipeline?.countsBilledEnergy = counts
+        }
+    }
+
+    /// Whether to use the privileged helper when it is installed. `restart`
+    /// starts it afresh, e.g. after it was replaced by a newer version.
+    public func setUsesHelper(_ uses: Bool, restart: Bool = false) {
+        queue.async {
+            self.usesHelper = uses
+            guard let privileged = self.pipeline?.privileged else { return }
+            if restart { privileged.usesHelper = false }
+            privileged.usesHelper = uses
         }
     }
 

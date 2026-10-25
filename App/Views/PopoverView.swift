@@ -43,7 +43,8 @@ struct PopoverView: View {
 
             Divider()
             HStack(spacing: 12) {
-                Label("No root, no permissions", systemImage: "lock.shield")
+                Label(model.usesHelper ? "Helper on: Apple's CPU figure" : "No root, no permissions",
+                      systemImage: model.usesHelper ? "checkmark.shield" : "lock.shield")
                     .labelStyle(.titleAndIcon)
                     .font(.caption)
                     .foregroundStyle(.secondary)
