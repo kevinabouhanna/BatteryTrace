@@ -1,0 +1,84 @@
+name: Release
+
+# Cut a release by tagging:  git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write        # to create the release and upload the disk image
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Not shallow: the build number is the commit count.
+          fetch-depth: 0
+
+      - name: Derive the version from the tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # A tagged commit that fails its tests should not become a release.
+      - name: Test
+        run: make test
+
+      - name: Build the universal app and its disk image
+        env:
+          MARKETING_VERSION: ${{ steps.version.outputs.value }}
+        run: make dmg
+
+      - name: Verify the stamped version matches the tag
+        run: |
+          app="build/DerivedDataUniversal/Build/Products/Release/Battery Trace.app"
+          stamped=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist")
+          if [ "$stamped" != "${{ steps.version.outputs.value }}" ]; then
+            echo "tag says ${{ steps.version.outputs.value }}, bundle says $stamped" >&2
+            exit 1
+          fi
+          echo "both say $stamped"
+          lipo -archs "$app/Contents/MacOS/Battery Trace"
+          codesign --verify --deep --strict "$app"
+
+      # The one rough edge left is Gatekeeper's first-open warning, which only a
+      # Developer ID signature and notarization remove. Until then the notes walk
+      # through "Open Anyway" so nobody takes the warning for a broken build.
+      - name: Write the release notes preamble
+        run: |
+          cat > release-notes.md <<'NOTE'
+          ### Installing
+
+          For macOS 14 or later, on Apple silicon or Intel.
+
+          1. Download **BatteryTrace.dmg** below, open it, and drag Battery Trace
+             into **Applications**.
+          2. Open it from Applications. The first time, macOS says it can't check
+             it for malicious software. Close that message.
+          3. Open **System Settings › Privacy & Security**, scroll down to
+             Security, and click **Open Anyway** next to Battery Trace. Confirm
+             with your password.
+
+          That last step is needed because Battery Trace isn't signed with an
+          Apple Developer ID yet. Look for the ⚡︎ reading in your menu bar.
+
+          ### Updating
+
+          Download the disk image and drag Battery Trace into Applications again,
+          choosing **Replace**. Your settings and history stay. macOS checks each
+          new version afresh, so approve it with **Open Anyway** once more.
+
+          ---
+          NOTE
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+             build/BatteryTrace.dmg \
+             --title "$GITHUB_REF_NAME" \
+             --notes-file release-notes.md \
+             --generate-notes

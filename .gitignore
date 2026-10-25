@@ -1,0 +1,19 @@
+# SwiftPM
+/BatteryTraceKit/.build/
+/BatteryTraceKit/.swiftpm/
+Package.resolved
+
+# Xcode
+/build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Validation runs are local; summaries go in docs/VALIDATION.md
+/validation/
+
+.DS_Store
+
+# Local assistant notes stay local
+CLAUDE.md
+.claude/

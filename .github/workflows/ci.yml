@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    # macOS is required, not a preference: the app links AppKit, IOKit and SwiftUI.
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build number is the commit count, which a depth-1 clone would
+          # report as 1.
+          fetch-depth: 0
+
+      - name: Xcode and Swift versions
+        run: xcodebuild -version && swift --version
+
+      # Attribution, grouping, storage, sampling policy and IOReport channel
+      # plans, all against fixtures: none of it needs this Mac's hardware.
+      - name: Test
+        run: make test
+
+      - name: Build the app
+        run: make app
+
+      - name: Check the bundle is well formed
+        run: |
+          app="build/DerivedData/Build/Products/Release/Battery Trace.app"
+          codesign --verify --verbose=1 "$app"
+          test -x "$app/Contents/MacOS/Battery Trace"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$app/Contents/Info.plist")" = true
+
+      # A runner is a virtual machine: no battery, and maybe no SMC sensor or
+      # IOReport counters. The app must start anyway and hide what it can't read.
+      - name: Smoke test — the app launches and stays up
+        run: Scripts/smoke-test.sh "build/DerivedData/Build/Products/Release/Battery Trace.app"
+
+  universal:
+    # Releases ship arm64 + x86_64. Runs alongside the job above so the slower
+    # two-architecture build doesn't delay feedback.
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build both architectures
+        run: make universal
+
+      - name: Check both slices are present
+        run: |
+          archs=$(lipo -archs "build/DerivedDataUniversal/Build/Products/Release/Battery Trace.app/Contents/MacOS/Battery Trace")
+          echo "built: $archs"
+          case "$archs" in *arm64*) ;; *) echo "missing arm64" >&2; exit 1 ;; esac
+          case "$archs" in *x86_64*) ;; *) echo "missing x86_64" >&2; exit 1 ;; esac
