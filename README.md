@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/icon.png" alt="" width="128">
+</p>
+
 # Battery Trace for Mac
 
 A menu bar app that shows where your Mac's power goes. It splits power by app,
@@ -30,6 +34,7 @@ memory and the rest of the chip.
   make app      # build/DerivedData/Build/Products/Release/Battery Trace.app
   make run      # build and open it
   make test     # 44 unit tests: attribution, grouping, storage, sampling policy
+  make install  # into /Applications, and open it
   ```
 - **Tests in Xcode:** open `BatteryTraceKit/Package.swift` and test the
   **BatteryTraceKit-Package** scheme. From the command line that's
@@ -145,3 +150,6 @@ BatteryTraceKit/         Swift package: Core, PowerSources, Attribution, Samplin
 Scripts/                 validation and measurement scripts
 docs/                    PLAN, ATTRIBUTION, VALIDATION, PERFORMANCE
 ```
+
+The icon is drawn by `Scripts/make-icon.swift`; run `swift Scripts/make-icon.swift`
+after changing it.
