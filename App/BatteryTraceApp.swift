@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model = AppModel(settings: SettingsStore())
         statusItem = StatusItemController(model: model)
         statusItem.openSettings = { [weak self] in self?.showSettings() }
+        statusItem.openAbout = { [weak self] in self?.showAbout() }
         statusItem.openSettingsWindow = { [weak self] in self?.openSettingsWindow }
         conditions = SystemConditions(engine: model.engine, history: model.history)
         model.start()

@@ -44,7 +44,7 @@ struct GeneralSettingsPane: View {
             } header: {
                 Text("Menu bar")
             } footer: {
-                SettingsFootnote("Power is the whole Mac's, measured live.")
+                SettingsFootnote("Power is the whole Mac's, measured live. Right-click the menu bar item, or click it with two fingers, for Settings and Quit.")
             }
 
             Section {
