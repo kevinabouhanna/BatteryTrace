@@ -138,9 +138,17 @@ E_k(app i) = E_k(measured) × w_k(i) / Σ_j w_k(j)
 
 | k | weight w_k(i): the delta, over the interval, of the coalition's… |
 |---|---|
-| CPU | `energy`: the kernel's per-thread CPU energy model (CLPC), nJ |
-| GPU | `gpu_energy_nj`: GPU energy the driver bills to the coalition (macOS 15+) |
+| CPU | `energy`: the kernel's per-thread CPU energy model (CLPC), nJ, **+ `energy_billed_to_me` − `energy_billed_to_others`** |
+| GPU | `gpu_energy_nj`: GPU energy the driver bills to the coalition (macOS 15+), **+ `gpu_energy_nj_billed_to_me` − `gpu_energy_nj_billed_to_others`** |
 | ANE | `ane_energy_nj` (macOS 15+) |
+
+The billed terms come from the kernel's importance vouchers: when a service
+(Spotlight's indexer, an XPC service, `coreaudiod`) works on a request from an
+app, macOS records the energy as done *for* that app. With **Count work macOS
+services do for an app** on (the default), it counts for the app; off, for the
+service, as in Activity Monitor. A weight never goes below 0, and summed over
+every app the billed terms cancel, so totals don't change. On the test Mac at
+idle they were small: 1.7 mW of 196 mW over 10 s.
 
 The kernel's counters are a model, so they decide only each app's *share*. The
 SoC's measured counters decide the *watts*. If no app's weight is non-zero, the
@@ -181,16 +189,16 @@ by name, since PIDs come and go.
 2. **The CPU weights are a model.** CLPC estimates each thread's energy from
    its cluster, frequency and time. It is good at "who ran on the P-cores, and
    how hard", but it is not a meter.
-3. **Work done on an app's behalf is charged to whoever did it.**
+3. **Work done on an app's behalf is charged to whoever did it, unless macOS
+   billed it.** Billing (above) moves what the kernel recorded back to the app,
+   but only work done through voucher-carrying requests is recorded.
    - WindowServer composites every window on the GPU, and that energy is
      charged to WindowServer, not to the app being drawn.
    - Audio mixing (`coreaudiod`), video decoding (`VTDecoderXPCService` plus
-     the `VDEC` block), Spotlight indexing (`mds`) and network work work the
-     same way.
-   - Battery Trace uses the energy each coalition *did*, as Activity Monitor
-     does. The kernel's "billed to me / billed to others" counters could move
-     some of it back, which is one of the next features. On the test Mac they
-     read 0 for GPU work.
+     the `VDEC` block), Spotlight indexing (`mds`) and network work stay with
+     the service wherever macOS doesn't bill them.
+   - The GPU's billed counters read 0 on the test Mac: WindowServer's
+     compositing isn't billed to the app being drawn.
    - Under heavy GPU load the effect is large. With a Metal compute load
      running, the kernel charged WindowServer 2.39 W of GPU energy against
      1.05 W for the process doing the work. WindowServer's frames wait behind

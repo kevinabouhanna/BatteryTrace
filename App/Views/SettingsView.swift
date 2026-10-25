@@ -51,6 +51,15 @@ struct GeneralSettingsPane: View {
             }
 
             Section {
+                Toggle("Count work macOS services do for an app", isOn: $settings.countsBilledEnergy)
+                    .toggleStyle(.switch)
+            } header: {
+                Text("Apps")
+            } footer: {
+                SettingsFootnote("When a service such as Spotlight's indexer works for an app, macOS records it. On, that work counts for the app; off, for the service that did it, as in Activity Monitor. Totals don't change.")
+            }
+
+            Section {
                 LabeledContent("While the popover is closed") {
                     Picker("While the popover is closed", selection: $settings.closedInterval) {
                         ForEach(SettingsStore.closedIntervals, id: \.self) { Text("Every \(Int($0)) s").tag($0) }

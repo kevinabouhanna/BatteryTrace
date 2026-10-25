@@ -16,13 +16,22 @@ public struct UsageCounters: Sendable, Hashable, Codable {
     public var idleWakeups: UInt64 = 0
     public var diskReadBytes: UInt64 = 0
     public var diskWriteBytes: UInt64 = 0
+    /// CPU energy other coalitions did on this one's behalf, and this one did
+    /// on others' behalf, in nanojoules: the kernel's voucher-based billing.
+    public var cpuBilledToMeNJ: UInt64 = 0
+    public var cpuBilledToOthersNJ: UInt64 = 0
+    /// The same for GPU energy. macOS 15+.
+    public var gpuBilledToMeNJ: UInt64 = 0
+    public var gpuBilledToOthersNJ: UInt64 = 0
 
     public init() {}
 
     public init(cpuEnergyNJ: UInt64 = 0, gpuEnergyNJ: UInt64 = 0, aneEnergyNJ: UInt64 = 0,
                 cpuTimeNS: UInt64 = 0, gpuTimeNS: UInt64 = 0,
                 interruptWakeups: UInt64 = 0, idleWakeups: UInt64 = 0,
-                diskReadBytes: UInt64 = 0, diskWriteBytes: UInt64 = 0) {
+                diskReadBytes: UInt64 = 0, diskWriteBytes: UInt64 = 0,
+                cpuBilledToMeNJ: UInt64 = 0, cpuBilledToOthersNJ: UInt64 = 0,
+                gpuBilledToMeNJ: UInt64 = 0, gpuBilledToOthersNJ: UInt64 = 0) {
         self.cpuEnergyNJ = cpuEnergyNJ
         self.gpuEnergyNJ = gpuEnergyNJ
         self.aneEnergyNJ = aneEnergyNJ
@@ -32,6 +41,10 @@ public struct UsageCounters: Sendable, Hashable, Codable {
         self.idleWakeups = idleWakeups
         self.diskReadBytes = diskReadBytes
         self.diskWriteBytes = diskWriteBytes
+        self.cpuBilledToMeNJ = cpuBilledToMeNJ
+        self.cpuBilledToOthersNJ = cpuBilledToOthersNJ
+        self.gpuBilledToMeNJ = gpuBilledToMeNJ
+        self.gpuBilledToOthersNJ = gpuBilledToOthersNJ
     }
 
     public static let zero = UsageCounters()
@@ -44,7 +57,9 @@ public struct UsageCounters: Sendable, Hashable, Codable {
               aneEnergyNJ >= earlier.aneEnergyNJ, cpuTimeNS >= earlier.cpuTimeNS,
               gpuTimeNS >= earlier.gpuTimeNS, interruptWakeups >= earlier.interruptWakeups,
               idleWakeups >= earlier.idleWakeups, diskReadBytes >= earlier.diskReadBytes,
-              diskWriteBytes >= earlier.diskWriteBytes
+              diskWriteBytes >= earlier.diskWriteBytes,
+              cpuBilledToMeNJ >= earlier.cpuBilledToMeNJ, cpuBilledToOthersNJ >= earlier.cpuBilledToOthersNJ,
+              gpuBilledToMeNJ >= earlier.gpuBilledToMeNJ, gpuBilledToOthersNJ >= earlier.gpuBilledToOthersNJ
         else { return nil }
         return UsageCounters(
             cpuEnergyNJ: cpuEnergyNJ - earlier.cpuEnergyNJ,
@@ -55,7 +70,11 @@ public struct UsageCounters: Sendable, Hashable, Codable {
             interruptWakeups: interruptWakeups - earlier.interruptWakeups,
             idleWakeups: idleWakeups - earlier.idleWakeups,
             diskReadBytes: diskReadBytes - earlier.diskReadBytes,
-            diskWriteBytes: diskWriteBytes - earlier.diskWriteBytes
+            diskWriteBytes: diskWriteBytes - earlier.diskWriteBytes,
+            cpuBilledToMeNJ: cpuBilledToMeNJ - earlier.cpuBilledToMeNJ,
+            cpuBilledToOthersNJ: cpuBilledToOthersNJ - earlier.cpuBilledToOthersNJ,
+            gpuBilledToMeNJ: gpuBilledToMeNJ - earlier.gpuBilledToMeNJ,
+            gpuBilledToOthersNJ: gpuBilledToOthersNJ - earlier.gpuBilledToOthersNJ
         )
     }
 
@@ -69,20 +88,33 @@ public struct UsageCounters: Sendable, Hashable, Codable {
             interruptWakeups: a.interruptWakeups &+ b.interruptWakeups,
             idleWakeups: a.idleWakeups &+ b.idleWakeups,
             diskReadBytes: a.diskReadBytes &+ b.diskReadBytes,
-            diskWriteBytes: a.diskWriteBytes &+ b.diskWriteBytes
+            diskWriteBytes: a.diskWriteBytes &+ b.diskWriteBytes,
+            cpuBilledToMeNJ: a.cpuBilledToMeNJ &+ b.cpuBilledToMeNJ,
+            cpuBilledToOthersNJ: a.cpuBilledToOthersNJ &+ b.cpuBilledToOthersNJ,
+            gpuBilledToMeNJ: a.gpuBilledToMeNJ &+ b.gpuBilledToMeNJ,
+            gpuBilledToOthersNJ: a.gpuBilledToOthersNJ &+ b.gpuBilledToOthersNJ
         )
     }
 
     public static func += (a: inout UsageCounters, b: UsageCounters) { a = a + b }
 
     /// The counter that splits a component of the given kind.
-    public func value(for split: AppSplit) -> UInt64 {
+    ///
+    /// With `billing`, energy done on another's behalf follows the kernel's
+    /// billing: what others did for this app is added, what it did for others
+    /// is taken away. Summed over every app, billing changes nothing.
+    public func value(for split: AppSplit, billing: Bool = false) -> UInt64 {
         switch split {
-        case .cpu: cpuEnergyNJ
-        case .gpu: gpuEnergyNJ
+        case .cpu: billing ? Self.billed(cpuEnergyNJ, plus: cpuBilledToMeNJ, minus: cpuBilledToOthersNJ) : cpuEnergyNJ
+        case .gpu: billing ? Self.billed(gpuEnergyNJ, plus: gpuBilledToMeNJ, minus: gpuBilledToOthersNJ) : gpuEnergyNJ
         case .ane: aneEnergyNJ
         case .none: 0
         }
+    }
+
+    private static func billed(_ did: UInt64, plus toMe: UInt64, minus toOthers: UInt64) -> UInt64 {
+        let total = did &+ toMe
+        return total > toOthers ? total - toOthers : 0
     }
 
     public var isZero: Bool { self == .zero }

@@ -34,6 +34,8 @@ public final class SamplingPipeline {
     private let energyWeightedSplits: Set<AppSplit>
     /// Off in the app: keeping the table would hold on to its storage.
     public var keepsProcessTable = false
+    /// Count energy macOS services spend on an app's behalf as the app's.
+    public var countsBilledEnergy = true
 
     // The live total, integrated between full ticks (trapezoids).
     private var lastLive: (uptimeNS: UInt64, watts: Double)?
@@ -167,7 +169,7 @@ public final class SamplingPipeline {
             onExternalPower: snapshot.battery.isPresent ? snapshot.battery.isOnExternalPower : true,
             measuredJoules: measured, measuredSource: source,
             components: sample.components, apps: apps, system: snapshot,
-            energyWeightedSplits: energyWeightedSplits
+            energyWeightedSplits: energyWeightedSplits, billing: countsBilledEnergy
         ))
         lap("attribution")
         report.telemetry = window

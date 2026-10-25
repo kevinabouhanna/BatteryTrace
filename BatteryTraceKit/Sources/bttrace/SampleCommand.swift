@@ -28,8 +28,10 @@ enum SampleCommand {
         let top = arguments.int("--top", default: 12)
         let showProcesses = arguments.flag("--processes")
         let json = arguments.flag("--json")
+        let billing = !arguments.flag("--no-billing")
 
         let pipeline = SamplingPipeline.standard()
+        pipeline.countsBilledEnergy = billing
         _ = pipeline.tick(detailed: true)
         var ledger = EnergyLedger()
         for index in 0..<count {

@@ -120,4 +120,32 @@ import Testing
         #expect(report.components[0].joules == 1.5)
         #expect(report.components[0].provenance == .estimated)
     }
+
+    @Test func billingMovesWorkDoneForAnAppToThatApp() throws {
+        // mds did 10 units of CPU work, 4 of them indexing Notes' files.
+        let daemon = AppUsage(identity: AppIdentity(key: .executable("/usr/libexec/mds"), name: "mds", kind: .system),
+                              usage: UsageCounters(cpuEnergyNJ: 10, cpuBilledToOthersNJ: 4))
+        let notes = AppUsage(identity: AppIdentity(key: .bundle("/System/Applications/Notes.app"), name: "Notes", kind: .app),
+                             usage: UsageCounters(cpuEnergyNJ: 2, cpuBilledToMeNJ: 4))
+        let components = [ComponentEnergy(id: .cpu, joules: 12, provenance: .measured)]
+
+        let direct = EnergySplitter.attribute(input(components: components, apps: [daemon, notes], measured: 12))
+        #expect(direct.apps.first { $0.identity.name == "mds" }?.cpuJoules == 10)
+
+        var billedInput = input(components: components, apps: [daemon, notes], measured: 12)
+        billedInput.billing = true
+        let billed = EnergySplitter.attribute(billedInput)
+        let mds = try #require(billed.apps.first { $0.identity.name == "mds" })
+        let app = try #require(billed.apps.first { $0.identity.name == "Notes" })
+        #expect(mds.cpuJoules == 6)
+        #expect(app.cpuJoules == 6)
+        #expect(abs(billed.totalJoules - direct.totalJoules) < 1e-9)
+    }
+
+    @Test func billingNeverMakesAWeightNegative() {
+        let usage = UsageCounters(cpuEnergyNJ: 3, gpuEnergyNJ: 1, cpuBilledToOthersNJ: 5, gpuBilledToMeNJ: 2, gpuBilledToOthersNJ: 9)
+        #expect(usage.value(for: .cpu, billing: true) == 0)
+        #expect(usage.value(for: .gpu, billing: true) == 0)
+        #expect(usage.value(for: .cpu) == 3)
+    }
 }
