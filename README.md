@@ -217,9 +217,10 @@ Validation results: [docs/VALIDATION.md](docs/VALIDATION.md).
 ## Privacy
 
 No telemetry, no account. No permissions either, unless you turn on
-notifications. Battery Trace goes online only to ask GitHub which version is
-newest: when you choose **Check for Updates…**, or once a day if you turn that
-on. That one request carries nothing about your Mac. History stays in the SQLite file
+notifications, and no administrator password unless you install the optional
+helper. Battery Trace goes online only to ask GitHub which version is newest:
+when you choose **Check for Updates…**, or once a day if you turn that on. That
+one request carries nothing about your Mac. History stays in the SQLite file
 above; delete it to start over. **Export History…** (in the right-click menu and
 Settings › General) writes it as two CSV files: energy by app, and the Mac's
 totals and parts, minute by minute.

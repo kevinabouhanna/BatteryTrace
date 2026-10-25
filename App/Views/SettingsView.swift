@@ -330,7 +330,7 @@ struct AboutSettingsPane: View {
             }
 
             Section {
-                Text("No permissions, no administrator password, no telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays on this Mac. It goes online only to ask GitHub for the newest version: when you check, or once a day if you turn that on.")
+                Text("No permissions, no telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays on this Mac. It goes online only to ask GitHub for the newest version: when you check, or once a day if you turn that on. No administrator password either, unless you install the optional helper in Settings › Accuracy.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
