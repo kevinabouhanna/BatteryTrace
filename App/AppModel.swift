@@ -3,6 +3,7 @@ import Attribution
 import BatteryTraceCore
 import Combine
 import Sampling
+import Storage
 
 enum HistoryWindow: String, CaseIterable, Identifiable {
     case fiveMinutes, hour, day
@@ -24,6 +25,14 @@ enum HistoryWindow: String, CaseIterable, Identifiable {
     }
 }
 
+enum BatteryWindow: String, CaseIterable, Identifiable {
+    case day, week
+
+    var id: String { rawValue }
+    var seconds: TimeInterval { self == .day ? 86400 : 7 * 86400 }
+    var label: String { self == .day ? "24 hours" : "7 days" }
+}
+
 /// Everything the menu bar and popover show.
 ///
 /// The menu bar reading is kept current always: it is one small struct. The
@@ -39,6 +48,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var componentSeries: [ComponentID: [Double]] = [:]
     @Published var window: HistoryWindow = .fiveMinutes {
         didSet { if window != oldValue { refreshHistory() } }
+    }
+    @Published private(set) var battery: HistoryService.BatteryHistory?
+    @Published var batteryWindow: BatteryWindow = .day {
+        didSet { if batteryWindow != oldValue { refreshBattery() } }
     }
 
     let settings: SettingsStore
@@ -100,6 +113,7 @@ final class AppModel: ObservableObject {
         engine.update { $0.popoverVisible = false }
         report = nil
         summary = nil
+        battery = nil
         totalSeries = []
         componentSeries = [:]
     }
@@ -139,6 +153,18 @@ final class AppModel: ObservableObject {
                 guard let self, self.isPopoverVisible else { return }
                 self.totalSeries = total
                 self.componentSeries = components
+            }
+        }
+        refreshBattery()
+    }
+
+    func refreshBattery() {
+        guard isPopoverVisible else { return }
+        let window = batteryWindow
+        history.batteryHistory(since: Date().addingTimeInterval(-window.seconds)) { [weak self] history in
+            MainActor.assumeIsolated {
+                guard let self, self.isPopoverVisible, self.batteryWindow == window else { return }
+                self.battery = history
             }
         }
     }

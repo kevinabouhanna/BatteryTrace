@@ -138,7 +138,7 @@ make measure                   # the built app's own CPU, Energy Impact and memo
 | Sources | `PowerSources` | Reads IOKit, libproc and private interfaces: one type per source, all behind protocols. The only module that touches private APIs. |
 | Sampling | `Sampling` | Runs a `DispatchSourceTimer` with leeway on a utility queue. A cheap live reading for the menu bar every 5 s, and attribution every 60 s (every 2 s with the window open). Slower in Low Power Mode and while the screens sleep, stopped while the Mac sleeps. |
 | Attribution | `Attribution` | Pure, unit-tested functions: groups processes into apps, splits the energy, builds window totals |
-| Storage | `Storage` | One SQLite file, `~/Library/Application Support/Battery Trace/history.sqlite`. Live readings for an hour, minutes for 7 days, app minutes for 24 h, then hours. Written every 5 minutes, pruned hourly, capped at 64 MB. |
+| Storage | `Storage` | One SQLite file, `~/Library/Application Support/Battery Trace/history.sqlite`. Live readings for an hour, minutes (with charge and charging) for 7 days, app minutes for 24 h, then hours, and one battery-health reading a day, kept. Written every 5 minutes, pruned hourly, capped at 64 MB. |
 | UI | `App/` | `NSStatusItem` and `NSPopover` with SwiftUI. Views exist only while the popover is open. |
 
 A new metric is one type conforming to `ComponentSource` (energy) or
@@ -192,8 +192,7 @@ totals and parts, minute by minute.
    would give per-process energy for every process, and Apple's own CPU figure.
 2. **Per-model display calibration.** Ship curves for each MacBook panel, and
    model external displays and HDR.
-3. **Charging history and battery-health trend.**
-4. **Signed, notarized builds and an update channel.**
+3. **Signed, notarized builds and an update channel.**
 
 ## Project layout
 
