@@ -61,6 +61,11 @@ final class SettingsStore: ObservableObject {
     @Published var openInterval: Double {
         didSet { defaults.set(openInterval, forKey: "openInterval") }
     }
+    /// Ask GitHub once a day whether there's a newer version. Off by default:
+    /// without it, Battery Trace goes online only when asked to check.
+    @Published var checksForUpdates: Bool {
+        didSet { defaults.set(checksForUpdates, forKey: "checksForUpdates") }
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -75,6 +80,7 @@ final class SettingsStore: ObservableObject {
         closedInterval = Self.closedIntervals.contains(closed) ? closed : 5
         let open = defaults.double(forKey: "openInterval")
         openInterval = Self.openIntervals.contains(open) ? open : 2
+        checksForUpdates = defaults.bool(forKey: "checksForUpdates")
     }
 
     var policy: SamplingPolicy { SamplingPolicy(closedInterval: closedInterval, openInterval: openInterval) }

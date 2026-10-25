@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 /// A menu bar app: no Dock icon (`LSUIElement`), no main window. AppKit's
 /// lifecycle rather than SwiftUI's `App`, so nothing is created that the
@@ -24,6 +25,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launchAtLogin = LaunchAtLogin()
     private var alerts: PowerAlerts!
     private var calibration: DisplayCalibrationController!
+    private var updates: UpdateChecker!
+    private var subscriptions: Set<AnyCancellable> = []
     /// Built when Settings opens and released when it closes, so a closed
     /// Settings holds no view hierarchy.
     private var settingsController: SettingsWindowController?
@@ -38,6 +41,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         conditions = SystemConditions(engine: model.engine, history: model.history)
         alerts = PowerAlerts(settings: model.settings)
         calibration = DisplayCalibrationController(settings: model.settings)
+        updates = UpdateChecker(settings: model.settings)
+        statusItem.updates = updates
+        updates.applySetting()
+        model.settings.$checksForUpdates
+            .dropFirst()
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updates.applySetting() }
+            .store(in: &subscriptions)
         alerts.onOpen = { [weak self] in self?.statusItem.showPopover() }
         model.onReport = { [weak self] report in self?.alerts.receive(report) }
         model.start()
@@ -54,11 +66,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if UserDefaults.standard.bool(forKey: "openPopover") { statusItem.showPopover() }
         if UserDefaults.standard.bool(forKey: "openSettings") { showSettings() }
         if UserDefaults.standard.bool(forKey: "testNotification") { alerts.runDeliveryTest() }
-        if let directory = UserDefaults.standard.string(forKey: "snapshotTo") { DebugSnapshot.run(model: model, to: directory) }
+        if let directory = UserDefaults.standard.string(forKey: "snapshotTo") { DebugSnapshot.run(model: model, updates: updates, to: directory) }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         model?.history.flushNow()
+    }
+
+    @objc func checkForUpdates() {
+        updates.check(interactive: true)
     }
 
     // MARK: Export
@@ -122,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func makeSettings() -> SettingsWindowController {
         let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin, alerts: alerts, calibration: calibration,
-                                                onExport: { [weak self] in self?.exportHistory() })
+                                                updates: updates, onExport: { [weak self] in self?.exportHistory() })
         settings.window.delegate = self
         settings.highestTop = { [weak self] screen in
             screen.frame.maxY - (self?.statusItem.menuBarHeight(on: screen) ?? 0)
@@ -175,6 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private lazy var mainMenu: NSMenu = {
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "About Battery Trace", action: #selector(showAbout), keyEquivalent: "").target = self
+        appMenu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "").target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
         appMenu.addItem(.separator())

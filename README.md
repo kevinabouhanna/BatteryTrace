@@ -55,13 +55,14 @@ of power** there too; macOS asks for permission to show notifications.
 
 ### Update
 
-Battery Trace never goes online by itself, so it can't tell you about new
-versions. To hear about them, click **Watch › Custom › Releases** at the top of
-this page.
+**Check for Updates…** in the right-click menu asks GitHub whether there's a
+newer version, and shows what's new. To have it look once a day, turn on
+**Settings › About › Check automatically once a day**; it's off until you do.
+Nothing installs by itself: **Download** opens the new disk image.
 
-To update, download the new disk image and drag Battery Trace into
-Applications, choosing **Replace**. Your settings and history are kept. macOS
-checks each new version afresh, so approve it with **Open Anyway** once more.
+Drag Battery Trace into Applications again, choosing **Replace**. Your settings
+and history are kept. macOS checks each new version afresh, so approve it with
+**Open Anyway** once more.
 
 ### Uninstall
 
@@ -181,8 +182,10 @@ Validation results: [docs/VALIDATION.md](docs/VALIDATION.md).
 
 ## Privacy
 
-No network access, no telemetry, no account. No permissions either, unless you
-turn on notifications. History stays in the SQLite file
+No telemetry, no account. No permissions either, unless you turn on
+notifications. Battery Trace goes online only to ask GitHub which version is
+newest: when you choose **Check for Updates…**, or once a day if you turn that
+on. That one request carries nothing about your Mac. History stays in the SQLite file
 above; delete it to start over. **Export History…** (in the right-click menu and
 Settings › General) writes it as two CSV files: energy by app, and the Mac's
 totals and parts, minute by minute.
@@ -192,7 +195,9 @@ totals and parts, minute by minute.
 1. **An optional privileged helper** (an `SMAppService` daemon running
    `powermetrics`), behind the existing `PowerMetricsProvider` protocol. It
    would give per-process energy for every process, and Apple's own CPU figure.
-2. **Signed, notarized builds and an update channel.**
+2. **A Developer ID.** The Release workflow already signs and notarizes when
+   the signing secrets are set ([docs/RELEASING.md](docs/RELEASING.md)); then
+   the "Open Anyway" step goes away.
 
 ## Project layout
 
