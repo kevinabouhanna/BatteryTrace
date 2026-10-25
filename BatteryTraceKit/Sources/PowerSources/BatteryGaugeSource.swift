@@ -20,7 +20,8 @@ public final class BatteryGaugeSource: SnapshotSource, TelemetrySource {
     private let service: io_registry_entry_t
     private let smc: SMCConnection?
 
-    private let macOSHealth = MacOSBatteryHealth()
+    // Created on the first reading of a battery, so a desktop never runs system_profiler.
+    private lazy var macOSHealth = MacOSBatteryHealth()
     private var slowFields = SlowFields()
     private var slowFieldsReadAt: UInt64 = 0
     private static let slowFieldsTTL: UInt64 = 300 * 1_000_000_000
