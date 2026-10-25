@@ -28,6 +28,7 @@ struct PopoverView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .fixedSize()
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
 

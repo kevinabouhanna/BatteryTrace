@@ -16,7 +16,10 @@ struct AppsSection: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .frame(width: 210)
+                // Its own width (234 pt), never a forced one: squeezed to
+                // 210 pt, it drew its background at full width on each click,
+                // then was cut back to the narrower frame.
+                .fixedSize()
                 Spacer()
                 Button {
                     showingExplanation.toggle()
