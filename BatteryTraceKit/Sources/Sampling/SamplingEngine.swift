@@ -24,6 +24,7 @@ public final class SamplingEngine: @unchecked Sendable {
     private var firesSinceAttribution = 0
     private var onReport: ReportHandler?
     private var onLive: LiveHandler?
+    private var countsBilledEnergy = true
 
     public init(policy: SamplingPolicy = SamplingPolicy(), makePipeline: @escaping @Sendable () -> SamplingPipeline = { .standard() }) {
         self.policy = policy
@@ -37,6 +38,7 @@ public final class SamplingEngine: @unchecked Sendable {
             self.onLive = onLive
             self.onReport = onReport
             if self.pipeline == nil { self.pipeline = self.makePipeline() }
+            self.pipeline?.countsBilledEnergy = self.countsBilledEnergy
             _ = self.pipeline?.tick(detailed: false) // primes every baseline
             if let reading = self.pipeline?.quickTick() { onLive(reading) }
             self.reschedule()
@@ -56,6 +58,14 @@ public final class SamplingEngine: @unchecked Sendable {
             guard self.policy != policy else { return }
             self.policy = policy
             self.reschedule()
+        }
+    }
+
+    /// Whether energy macOS services spend on an app's behalf counts for the app.
+    public func setCountsBilledEnergy(_ counts: Bool) {
+        queue.async {
+            self.countsBilledEnergy = counts
+            self.pipeline?.countsBilledEnergy = counts
         }
     }
 

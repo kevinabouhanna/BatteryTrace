@@ -187,14 +187,12 @@ totals and parts, minute by minute.
 1. **An optional privileged helper** (an `SMAppService` daemon running
    `powermetrics`), behind the existing `PowerMetricsProvider` protocol. It
    would give per-process energy for every process, and Apple's own CPU figure.
-2. **"Billed to me" attribution.** Move energy that daemons spend on an app's
-   behalf back to that app, using the kernel's `energy_billed_to_me` counters.
-3. **Notifications for battery-hungry apps.** For example: "Chrome has used 18%
+2. **Notifications for battery-hungry apps.** For example: "Chrome has used 18%
    of your battery in the last hour".
-4. **Per-model display calibration.** Ship curves for each MacBook panel, and
+3. **Per-model display calibration.** Ship curves for each MacBook panel, and
    model external displays and HDR.
-5. **Charging history and battery-health trend.**
-6. **Signed, notarized builds and an update channel.**
+4. **Charging history and battery-health trend.**
+5. **Signed, notarized builds and an update channel.**
 
 ## Project layout
 

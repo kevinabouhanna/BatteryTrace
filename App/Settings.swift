@@ -32,6 +32,10 @@ final class SettingsStore: ObservableObject {
     @Published var showsMenuBarIcon: Bool {
         didSet { defaults.set(showsMenuBarIcon, forKey: "showsMenuBarIcon") }
     }
+    /// Energy macOS services spend on an app's behalf counts for the app.
+    @Published var countsBilledEnergy: Bool {
+        didSet { defaults.set(countsBilledEnergy, forKey: "countsBilledEnergy") }
+    }
     @Published var closedInterval: Double {
         didSet { defaults.set(closedInterval, forKey: "closedInterval") }
     }
@@ -43,6 +47,7 @@ final class SettingsStore: ObservableObject {
         self.defaults = defaults
         menuBarStyle = defaults.string(forKey: "menuBarStyle").flatMap(MenuBarStyle.init(rawValue:)) ?? .watts
         showsMenuBarIcon = defaults.object(forKey: "showsMenuBarIcon") == nil ? true : defaults.bool(forKey: "showsMenuBarIcon")
+        countsBilledEnergy = defaults.object(forKey: "countsBilledEnergy") == nil ? true : defaults.bool(forKey: "countsBilledEnergy")
         let closed = defaults.double(forKey: "closedInterval")
         closedInterval = Self.closedIntervals.contains(closed) ? closed : 5
         let open = defaults.double(forKey: "openInterval")

@@ -32,7 +32,7 @@ default:
     usage: bttrace <command> [options]
 
       sources                          what each data source found on this Mac
-      sample [--interval 5] [--count 3] [--top 12] [--processes] [--json]
+      sample [--interval 5] [--count 3] [--top 12] [--processes] [--json] [--no-billing]
                                        sample and attribute, like the app does
       cost [--interval 2] [--count 15] what sampling costs Battery Trace, per tick and per minute
       totals [--minutes 5]             minute-by-minute totals against the battery gauge

@@ -56,12 +56,14 @@ final class AppModel: ObservableObject {
     init(settings: SettingsStore) {
         self.settings = settings
         engine = SamplingEngine(policy: settings.policy)
+        engine.setCountsBilledEnergy(settings.countsBilledEnergy)
         history = HistoryService(url: HistoryService.defaultURL)
         settings.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 guard let self else { return }
                 engine.setPolicy(self.settings.policy)
+                engine.setCountsBilledEnergy(self.settings.countsBilledEnergy)
                 onMenuBarChange?()
             }
             .store(in: &subscriptions)

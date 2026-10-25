@@ -41,9 +41,13 @@ public final class CoalitionReader: DataSource {
         static let bytesWritten = 7
         static let gpuTime = 8          // nanoseconds
         static let energy = 11          // nanojoules (CLPC CPU energy model)
+        static let energyBilledToMe = 20
+        static let energyBilledToOthers = 21
         static let aneEnergy = 39       // nanojoules, macOS 15+
         static let physFootprint = 40
         static let gpuEnergy = 41       // nanojoules, macOS 15+
+        static let gpuBilledToMe = 42
+        static let gpuBilledToOthers = 43
         /// Up to `swapins` (xnu-12377). Asking for more is harmless.
         static let count = 45
     }
@@ -102,9 +106,13 @@ public final class CoalitionReader: DataSource {
         counters.idleWakeups = buffer[Field.idleWakeups]
         counters.diskReadBytes = buffer[Field.bytesRead]
         counters.diskWriteBytes = buffer[Field.bytesWritten]
+        counters.cpuBilledToMeNJ = buffer[Field.energyBilledToMe]
+        counters.cpuBilledToOthersNJ = buffer[Field.energyBilledToOthers]
         if hasGPUAndANEEnergy {
             counters.gpuEnergyNJ = buffer[Field.gpuEnergy]
             counters.aneEnergyNJ = buffer[Field.aneEnergy]
+            counters.gpuBilledToMeNJ = buffer[Field.gpuBilledToMe]
+            counters.gpuBilledToOthersNJ = buffer[Field.gpuBilledToOthers]
         }
         return CoalitionRecord(
             id: id, counters: counters,

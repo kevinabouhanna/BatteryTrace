@@ -27,11 +27,14 @@ public enum EnergySplitter {
         /// For these, a missing component is rebuilt from the weights, marked
         /// as an estimate, rather than dropped.
         public var energyWeightedSplits: Set<AppSplit>
+        /// Weight apps by the kernel's billing: energy macOS services spend on
+        /// an app's behalf counts for the app. Totals are unchanged.
+        public var billing: Bool
 
         public init(endUptimeNS: UInt64, endDate: Date, durationSeconds: Double, onExternalPower: Bool,
                     measuredJoules: Double?, measuredSource: TotalSource?, components: [ComponentEnergy],
                     apps: [AppUsage], system: SystemSnapshot = SystemSnapshot(),
-                    energyWeightedSplits: Set<AppSplit> = [.cpu, .gpu, .ane]) {
+                    energyWeightedSplits: Set<AppSplit> = [.cpu, .gpu, .ane], billing: Bool = false) {
             self.endUptimeNS = endUptimeNS
             self.endDate = endDate
             self.durationSeconds = durationSeconds
@@ -42,6 +45,7 @@ public enum EnergySplitter {
             self.apps = apps
             self.system = system
             self.energyWeightedSplits = energyWeightedSplits
+            self.billing = billing
         }
     }
 
@@ -62,7 +66,7 @@ public enum EnergySplitter {
         var unclaimed = 0.0
 
         for split in [AppSplit.cpu, .gpu, .ane] {
-            let weights = input.apps.map { Double($0.usage.value(for: split)) }
+            let weights = input.apps.map { Double($0.usage.value(for: split, billing: input.billing)) }
             let totalWeight = weights.reduce(0, +)
             let componentID = ComponentID.forSplit(split)
             var componentJoules = merged.values.filter { $0.id.appSplit == split }.reduce(0) { $0 + $1.joules }
