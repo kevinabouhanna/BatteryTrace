@@ -72,6 +72,7 @@ final class AppModel: ObservableObject {
         self.settings = settings
         engine = SamplingEngine(policy: settings.policy)
         engine.setCountsBilledEnergy(settings.countsBilledEnergy)
+        engine.setDisplayCalibration(settings.displayCalibration)
         history = HistoryService(url: HistoryService.defaultURL)
         settings.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -79,6 +80,7 @@ final class AppModel: ObservableObject {
                 guard let self else { return }
                 engine.setPolicy(self.settings.policy)
                 engine.setCountsBilledEnergy(self.settings.countsBilledEnergy)
+                engine.setDisplayCalibration(self.settings.displayCalibration)
                 onMenuBarChange?()
             }
             .store(in: &subscriptions)

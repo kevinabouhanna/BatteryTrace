@@ -20,6 +20,7 @@ struct GeneralSettingsPane: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var launchAtLogin: LaunchAtLogin
     @ObservedObject var alerts: PowerAlerts
+    @ObservedObject var calibration: DisplayCalibrationController
     var onExport: () -> Void = {}
 
     var body: some View {
@@ -116,6 +117,21 @@ struct GeneralSettingsPane: View {
                 SettingsFootnote("Apps are attributed once a minute while the popover is closed, and at every reading while it's open. Sampling slows in Low Power Mode and while the display sleeps, and stops while the Mac sleeps. Nothing is lost by sampling less often: every counter is cumulative.")
             }
 
+            if calibration.isAvailable {
+                Section {
+                    LabeledContent("Backlight estimate") {
+                        Text(settings.displayCalibration.map { "Calibrated on this Mac, \($0.date.formatted(date: .abbreviated, time: .omitted))" }
+                             ?? "Scaled from a MacBook Air")
+                            .foregroundStyle(.secondary)
+                    }
+                    calibrationRow
+                } header: {
+                    Text("Display")
+                } footer: {
+                    SettingsFootnote("No sensor measures the display, so its power is an estimate from brightness. Calibrating measures this Mac's own panel: for about a minute the display dims and brightens while the Mac stays idle, then your brightness is put back.")
+                }
+            }
+
             Section {
                 LabeledContent("Export as CSV") {
                     Button("Export…", action: onExport)
@@ -132,6 +148,41 @@ struct GeneralSettingsPane: View {
             }
         }
         .settingsForm()
+    }
+
+    @ViewBuilder
+    private var calibrationRow: some View {
+        switch calibration.state {
+        case .running(let step, let steps):
+            LabeledContent {
+                Button("Cancel") { calibration.cancel() }
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Calibrating… keep the Mac idle")
+                    ProgressView(value: Double(step), total: Double(steps)).frame(width: 220)
+                }
+            }
+        default:
+            LabeledContent {
+                HStack {
+                    if settings.displayCalibration != nil {
+                        Button("Reset") { calibration.reset() }
+                    }
+                    Button("Calibrate…") { calibration.start() }
+                }
+            } label: {
+                switch calibration.state {
+                case .finished(let result):
+                    SettingsRowDetail(String(format: "Done: about %.1f W at full brightness.", result.curve.watts(slider: 1)))
+                case .tooNoisy:
+                    SettingsRowDetail("Something else was busy, so the measurement was too noisy to use. Quit busy apps and try again.")
+                case .failed:
+                    SettingsRowDetail("Calibration couldn't finish. Nothing was changed.")
+                default:
+                    Text("Measure this Mac's display")
+                }
+            }
+        }
     }
 
     @ViewBuilder

@@ -22,6 +22,8 @@ public final class SamplingPipeline {
     public let essentialSnapshots: [any SnapshotSource]
     /// Read only while someone is looking: per-core load, memory, brightness.
     public let detailSnapshots: [any SnapshotSource]
+    /// The display model, to give it this Mac's calibration.
+    public private(set) var display: DisplayBacklightSource?
 
     /// CPU time per stage of the last tick, for `bttrace cost`.
     public private(set) var lastTimings: [(stage: String, ns: UInt64)] = []
@@ -63,13 +65,15 @@ public final class SamplingPipeline {
         var weighted: Set<AppSplit> = [.cpu]
         if metrics.gpuWeightsAreEnergy { weighted.formUnion([.gpu, .ane]) }
         let names = BundleNameCache()
-        return SamplingPipeline(
+        let pipeline = SamplingPipeline(
             provider: metrics, live: smc, telemetry: battery,
             essentialSnapshots: [battery, ThermalSource()],
             detailSnapshots: [CPULoadSource(), MemorySource(), display],
             bundleNamer: { names.name(forBundle: $0) },
             energyWeightedSplits: weighted
         )
+        pipeline.display = display.isAvailable ? display : nil
+        return pipeline
     }
 
     public var allSources: [any DataSource] {

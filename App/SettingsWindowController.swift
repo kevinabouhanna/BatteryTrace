@@ -46,7 +46,8 @@ final class SettingsWindowController: NSObject {
     /// bar whenever it's revealed.
     var highestTop: (NSScreen) -> CGFloat = { $0.visibleFrame.maxY }
 
-    init(settings: SettingsStore, launchAtLogin: LaunchAtLogin, alerts: PowerAlerts, onExport: @escaping () -> Void) {
+    init(settings: SettingsStore, launchAtLogin: LaunchAtLogin, alerts: PowerAlerts, calibration: DisplayCalibrationController,
+         onExport: @escaping () -> Void) {
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: SettingsMetrics.paneWidth, height: 300),
                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
         super.init()
@@ -56,7 +57,7 @@ final class SettingsWindowController: NSObject {
         for pane in SettingsPane.allCases {
             let host: NSHostingController<AnyView>
             switch pane {
-            case .general: host = NSHostingController(rootView: AnyView(GeneralSettingsPane(settings: settings, launchAtLogin: launchAtLogin, alerts: alerts, onExport: onExport)))
+            case .general: host = NSHostingController(rootView: AnyView(GeneralSettingsPane(settings: settings, launchAtLogin: launchAtLogin, alerts: alerts, calibration: calibration, onExport: onExport)))
             case .about: host = NSHostingController(rootView: AnyView(AboutSettingsPane()))
             }
             host.sizingOptions = [.preferredContentSize]
