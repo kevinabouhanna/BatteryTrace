@@ -38,14 +38,24 @@ public final class HistoryStore {
     private var appIDs: [AppKey: Int64] = [:]
     private var pendingLive: [LiveReading] = []
     private var pendingMinutes: [Int64: EnergyLedger] = [:]
-    private var pendingMeta: [Int64: MinuteMeta] = [:]
+    var pendingMeta: [Int64: MinuteMeta] = [:]
     private var lastFlush = Date()
     private var lastPrune = Date.distantPast
 
     struct MinuteMeta {
         var batteryPercent: Double?
         var onExternalPower = true
+        var charging = false
     }
+
+    struct DailyBattery {
+        var health: Double
+        var nominalMAh: Int
+        var designMAh: Int
+        var cycles: Int?
+    }
+
+    var pendingDaily: [Int64: DailyBattery] = [:]
 
     public init(url: URL, limits: Limits = Limits()) throws {
         self.url = url
@@ -68,8 +78,28 @@ public final class HistoryStore {
         CREATE TABLE IF NOT EXISTS minute_process (ts INTEGER, app INTEGER, name TEXT, cpu_j REAL, PRIMARY KEY (ts, app, name)) WITHOUT ROWID;
         CREATE TABLE IF NOT EXISTS hour_app (ts INTEGER, app INTEGER, cpu_j REAL, gpu_j REAL, ane_j REAL, PRIMARY KEY (ts, app)) WITHOUT ROWID;
         """)
+        try migrate()
         try db.statement("SELECT id, key FROM apps").rows { row in
             if let key = row.string(1) { appIDs[AppKey(rawValue: key)] = row.int(0) }
+        }
+    }
+
+    /// Schema changes since the first release, in order, tracked in
+    /// `PRAGMA user_version`. Each runs once per history file.
+    private func migrate() throws {
+        var version: Int64 = 0
+        try db.statement("PRAGMA user_version").rows { version = $0.int(0) }
+        if version < 1 {
+            // 0.5.0: whether the battery was charging each minute, and one
+            // health reading a day, kept indefinitely.
+            try db.transaction {
+                try db.execute("ALTER TABLE minute ADD COLUMN charging INTEGER")
+                try db.execute("""
+                CREATE TABLE IF NOT EXISTS battery_daily (
+                    day INTEGER PRIMARY KEY, health REAL, nominal_mah INTEGER, design_mah INTEGER, cycles INTEGER) WITHOUT ROWID
+                """)
+                try db.execute("PRAGMA user_version = 1")
+            }
         }
     }
 
@@ -87,7 +117,12 @@ public final class HistoryStore {
         var meta = pendingMeta[minute] ?? MinuteMeta()
         meta.batteryPercent = report.system.battery.percent
         meta.onExternalPower = report.onExternalPower
+        meta.charging = report.system.battery.isCharging
         pendingMeta[minute] = meta
+        let battery = report.system.battery
+        if let health = battery.healthPercent, let nominal = battery.nominalCapacityMAh, let design = battery.designCapacityMAh {
+            pendingDaily[Self.day(of: report.endDate)] = DailyBattery(health: health, nominalMAh: nominal, designMAh: design, cycles: battery.cycleCount)
+        }
     }
 
     /// Writes buffered data if it has waited long enough. Cheap otherwise.
@@ -99,11 +134,17 @@ public final class HistoryStore {
     /// Writes everything buffered, in one transaction. Prunes hourly.
     public func flush(now: Date = Date()) throws {
         lastFlush = now
-        guard !pendingLive.isEmpty || !pendingMinutes.isEmpty else { return }
+        guard !pendingLive.isEmpty || !pendingMinutes.isEmpty || !pendingDaily.isEmpty else { return }
         let live = pendingLive
         let minutes = pendingMinutes
         let meta = pendingMeta
+        let daily = pendingDaily
         try db.transaction {
+            let insertDaily = try db.statement("INSERT OR REPLACE INTO battery_daily VALUES (?, ?, ?, ?, ?)")
+            for (day, reading) in daily {
+                try insertDaily.bind(day, reading.health, reading.nominalMAh, reading.designMAh, reading.cycles).run()
+                insertDaily.reset()
+            }
             let insertLive = try db.statement("INSERT OR REPLACE INTO live VALUES (?, ?, ?, ?)")
             for reading in live {
                 try insertLive.bind(Int64(reading.date.timeIntervalSince1970.rounded()), reading.systemWatts,
@@ -117,6 +158,7 @@ public final class HistoryStore {
         pendingLive.removeAll(keepingCapacity: true)
         pendingMinutes.removeAll(keepingCapacity: true)
         pendingMeta.removeAll(keepingCapacity: true)
+        pendingDaily.removeAll(keepingCapacity: true)
         if now.timeIntervalSince(lastPrune) >= 3600 {
             lastPrune = now
             try prune(now: now)
@@ -126,7 +168,9 @@ public final class HistoryStore {
     private func write(minute: Int64, ledger: EnergyLedger, meta: MinuteMeta) throws {
         // A minute may already be partly stored (flushes split it): add to it.
         try db.statement("""
-        INSERT INTO minute VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO minute (ts, seconds, battery_seconds, sensor_j, sensor_seconds, sensor_src,
+                            telemetry_j, telemetry_seconds, unclaimed_j, battery_pct, on_ac, charging)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(ts) DO UPDATE SET
             seconds = seconds + excluded.seconds,
             battery_seconds = battery_seconds + excluded.battery_seconds,
@@ -137,12 +181,13 @@ public final class HistoryStore {
             telemetry_seconds = telemetry_seconds + excluded.telemetry_seconds,
             unclaimed_j = unclaimed_j + excluded.unclaimed_j,
             battery_pct = coalesce(excluded.battery_pct, battery_pct),
-            on_ac = excluded.on_ac
+            on_ac = excluded.on_ac,
+            charging = excluded.charging
         """).bind(minute, ledger.durationSeconds, ledger.onBatterySeconds,
                   ledger.sensorSeconds > 0 ? ledger.sensorJoules : nil, ledger.sensorSeconds,
                   ledger.sensorSource.map { Int($0.rawValue) },
                   ledger.telemetryJoules, ledger.telemetrySeconds, ledger.unclaimedJoules,
-                  meta.batteryPercent, meta.onExternalPower).run()
+                  meta.batteryPercent, meta.onExternalPower, meta.charging).run()
 
         let component = try db.statement("""
         INSERT INTO minute_component VALUES (?, ?, ?, ?)
@@ -303,5 +348,8 @@ public final class HistoryStore {
     }
 
     static func minute(of date: Date) -> Int64 { Int64(date.timeIntervalSince1970 / 60) * 60 }
+
+    /// The start of `date`'s day in the current time zone, as Unix seconds.
+    static func day(of date: Date) -> Int64 { Int64(Calendar.current.startOfDay(for: date).timeIntervalSince1970) }
 }
 

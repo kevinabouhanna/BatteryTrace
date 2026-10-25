@@ -63,6 +63,39 @@ final class HistoryService: @unchecked Sendable {
         }
     }
 
+    struct BatteryHistory: Sendable {
+        var points: [ChargePoint]
+        var summary: ChargeSummary
+        var health: [HealthPoint]
+    }
+
+    /// Charge since `start` (thinned to about `points` for drawing, summed
+    /// from every minute) and the daily health readings, on the main queue.
+    func batteryHistory(since start: Date, points: Int = 300, completion: @escaping @Sendable (BatteryHistory?) -> Void) {
+        queue.async {
+            guard let store = self.store, let charge = try? store.chargeHistory(since: start) else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            let step = max(1, charge.count / points)
+            // Keep each kept point's charging and adapter state as the
+            // bucket's, so short charges don't vanish from the chart.
+            var thinned: [ChargePoint] = []
+            var index = 0
+            while index < charge.count {
+                let bucket = charge[index..<min(charge.count, index + step)]
+                var point = bucket.last!
+                point.charging = bucket.contains { $0.charging }
+                point.onExternalPower = bucket.contains { $0.onExternalPower }
+                thinned.append(point)
+                index += step
+            }
+            let history = BatteryHistory(points: thinned, summary: HistoryStore.summarize(charge),
+                                         health: (try? store.healthHistory()) ?? [])
+            DispatchQueue.main.async { completion(history) }
+        }
+    }
+
     /// The window's totals, delivered on the main queue.
     func summary(since start: Date, completion: @escaping @Sendable (WindowSummary?) -> Void) {
         queue.async {

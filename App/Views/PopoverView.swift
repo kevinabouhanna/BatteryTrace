@@ -12,7 +12,7 @@ struct PopoverView: View {
     }
 
     enum Tab: String, CaseIterable, Identifiable {
-        case apps = "Apps", system = "System"
+        case apps = "Apps", system = "System", battery = "Battery"
         var id: String { rawValue }
     }
 
@@ -37,6 +37,8 @@ struct PopoverView: View {
                 AppsSection(model: model)
             case .system:
                 SystemSection(report: model.report, series: model.componentSeries)
+            case .battery:
+                BatterySection(model: model)
             }
 
             Divider()
