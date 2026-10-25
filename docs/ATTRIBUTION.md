@@ -195,13 +195,13 @@ by name, since PIDs come and go.
 
 ## Known error sources
 
-1. **Apple has two CPU energy counters, and they disagree by about 0.3 W.**
-   Battery Trace reads PMP's live cluster counters. `powermetrics` reports the
-   "Energy Model" counter, which without root refreshes only every ~5 minutes.
-   On the test Mac the gap was a near-constant 0.26–0.35 W, from idle to a
-   4-thread loop. That means our CPU row reads low by that much, which is a
-   third of `powermetrics`' figure at idle. The rest isn't lost: it is part of
-   Unattributed, within the measured total.
+1. **Apple reports CPU energy in more than one place.** Battery Trace reads
+   PMP's live cluster counters (`ECPU + PCPU`). `powermetrics` with only its
+   CPU sampler agrees with them to about 1%, at idle and under load. Run with
+   its per-process `tasks` sampler too, it reported 0.26–0.35 W more, for
+   reasons not yet pinned down (`VALIDATION.md` §3).
+   Whatever any counter misses stays inside the measured total, as part of
+   Unattributed.
 2. **The CPU weights are a model.** CLPC estimates each thread's energy from
    its cluster, frequency and time. It is good at "who ran on the P-cores, and
    how hard", but it is not a meter.
