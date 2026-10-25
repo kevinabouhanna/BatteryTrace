@@ -33,10 +33,11 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
     /// The panel the reference curve was fitted on: 420 nits, 286.9 × 179.3 mm.
     static let referencePeakNits = 420.0
     static let referenceAreaMM2 = 286.87 * 179.29
-    /// The most the brightness slider reaches on any built-in panel: its SDR
-    /// peak, 400–600 nits. An XDR panel may report its HDR peak (1600 nits),
-    /// which the slider never drives the whole panel to; that would triple
-    /// the estimate.
+    /// A ceiling on the peak brightness the estimate scales by. Most built-in
+    /// panels' SDR peak is 400–600 nits; 2024 and later MacBook Pros reach
+    /// 1000. An XDR panel may report its 1600-nit HDR peak instead, which the
+    /// slider never drives the whole panel to. Not checked on an XDR Mac yet:
+    /// there, the estimate may read low, and Calibrate… is the fix.
     static let sdrPeakCapNits = 600.0
 
     /// This Mac's built-in panel, as the estimate sees it.

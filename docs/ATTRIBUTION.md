@@ -87,9 +87,10 @@ P_backlight(s) = k × (−0.085·s + 5.12·s²)  W      s = brightness slider, 0
   built-in panel Battery Trace runs on, by area × peak brightness relative to
   that one (286.9 × 179.3 mm, 420 nits). Both come from the Mac itself: the
   size from CoreGraphics, the peak from the backlight's `BrightnessMilliNits`.
-  The peak is capped at 600 nits, the top of the SDR range the slider covers,
-  because an XDR panel may report its 1600-nit HDR peak, which would triple
-  the estimate. A 15-inch, 500-nit panel gets about 1.6 times the Air's curve.
+  The peak is capped at 600 nits, because an XDR panel may report its
+  1600-nit HDR peak, which would triple the estimate. Most panels' SDR peak
+  is 400–600 nits, but 2024 and later MacBook Pros reach 1000, so on those
+  the estimate may read low. It hasn't been checked on an XDR Mac yet. A 15-inch, 500-nit panel gets about 1.6 times the Air's curve.
   Settings › Measurement › Display shows the panel's size, peak and estimate.
   Scaling assumes the same kind of backlight. It's rough for a different kind
   (mini-LED), which is what calibrating replaces.
