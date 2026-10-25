@@ -41,10 +41,12 @@ struct GeneralSettingsPane: View {
                     .labelsHidden()
                     .fixedSize()
                 }
+                Toggle("Show icon", isOn: $settings.showsMenuBarIcon)
+                    .toggleStyle(.switch)
             } header: {
                 Text("Menu bar")
             } footer: {
-                SettingsFootnote("Power is the whole Mac's, measured live. Right-click the menu bar item, or click it with two fingers, for Settings and Quit.")
+                SettingsFootnote("Power is the whole Mac's, measured live. Without the icon, the reading alone stays in the menu bar. Right-click it, or click it with two fingers, for Settings and Quit.")
             }
 
             Section {

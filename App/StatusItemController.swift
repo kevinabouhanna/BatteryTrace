@@ -25,7 +25,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private var shownText = ""
-    private var shownStyle: SettingsStore.MenuBarStyle?
+    /// The symbol on show, nil when hidden; reset to redraw.
+    private var shownSymbol: String??
 
     private var outsideClickMonitor: Any?
     /// Pointer watchers that exist only while a revealed menu bar holds the
@@ -72,13 +73,19 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     private func updateButton() {
         guard let button = item.button else { return }
-        let style = model.settings.menuBarStyle
-        if style != shownStyle {
-            shownStyle = style
-            let symbol = style == .watts ? "bolt.fill" : "battery.75percent"
-            let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-            image?.isTemplate = true
-            button.image = image?.withSymbolConfiguration(.init(pointSize: 11, weight: .regular))
+        let settings = model.settings
+        let symbol: String? = settings.showsMenuBarIcon ? (settings.menuBarStyle == .watts ? "bolt.fill" : "battery.75percent") : nil
+        if shownSymbol != .some(symbol) {
+            shownSymbol = .some(symbol)
+            if let symbol {
+                let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+                image?.isTemplate = true
+                button.image = image?.withSymbolConfiguration(.init(pointSize: 11, weight: .regular))
+                button.imagePosition = .imageLeading
+            } else {
+                button.image = nil
+                button.imagePosition = .noImage
+            }
         }
         let text = model.menuBarText
         guard text != shownText else { return }
