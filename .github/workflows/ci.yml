@@ -39,6 +39,8 @@ jobs:
           codesign --verify --verbose=1 "$app"
           test -x "$app/Contents/MacOS/Battery Trace"
           test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$app/Contents/Info.plist")" = true
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$app/Contents/Info.plist")" = AppIcon
+          test -f "$app/Contents/Resources/AppIcon.icns"
 
       # A runner is a virtual machine: no battery, and maybe no SMC sensor or
       # IOReport counters. The app must start anyway and hide what it can't read.
