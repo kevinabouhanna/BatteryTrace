@@ -45,6 +45,24 @@ final class HistoryService: @unchecked Sendable {
         queue.async { try? self.store?.flush() }
     }
 
+    /// Writes the history as two CSV files into `directory`; the URLs, or an
+    /// error, on the main queue.
+    func exportCSV(to directory: URL, completion: @escaping @Sendable (Result<[URL], Error>) -> Void) {
+        queue.async {
+            let result = Result<[URL], Error> {
+                guard let store = self.store else { throw CocoaError(.fileNoSuchFile) }
+                let export = try store.exportCSV(since: Date().addingTimeInterval(-7 * 86400))
+                let day = Date().formatted(.iso8601.year().month().day())
+                let apps = directory.appendingPathComponent("Battery Trace apps \(day).csv")
+                let system = directory.appendingPathComponent("Battery Trace system \(day).csv")
+                try export.apps.write(to: apps, atomically: true, encoding: .utf8)
+                try export.system.write(to: system, atomically: true, encoding: .utf8)
+                return [apps, system]
+            }
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
     /// The window's totals, delivered on the main queue.
     func summary(since start: Date, completion: @escaping @Sendable (WindowSummary?) -> Void) {
         queue.async {

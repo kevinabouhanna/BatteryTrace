@@ -19,6 +19,7 @@ enum SettingsMetrics {
 struct GeneralSettingsPane: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var launchAtLogin: LaunchAtLogin
+    var onExport: () -> Void = {}
 
     var body: some View {
         Form {
@@ -68,6 +69,21 @@ struct GeneralSettingsPane: View {
                 Text("Sampling")
             } footer: {
                 SettingsFootnote("Apps are attributed once a minute while the popover is closed, and at every reading while it's open. Sampling slows in Low Power Mode and while the display sleeps, and stops while the Mac sleeps. Nothing is lost by sampling less often: every counter is cumulative.")
+            }
+
+            Section {
+                LabeledContent("Export as CSV") {
+                    Button("Export…", action: onExport)
+                }
+                LabeledContent("History file") {
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([HistoryService.defaultURL])
+                    }
+                }
+            } header: {
+                Text("History")
+            } footer: {
+                SettingsFootnote("Kept on this Mac: totals minute by minute for 7 days, apps minute by minute for 24 hours and hour by hour for 7 days. Export writes two spreadsheet-ready files: energy by app, and the Mac's totals and parts. Delete the history file to start over.")
             }
         }
         .settingsForm()
@@ -128,15 +144,12 @@ struct AboutSettingsPane: View {
             }
 
             Section {
-                LabeledContent("History") {
-                    Button("Show in Finder") {
-                        NSWorkspace.shared.activateFileViewerSelecting([HistoryService.defaultURL])
-                    }
-                }
+                Text("No permissions, no administrator password, no network access, no telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays on this Mac.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } header: {
                 Text("Privacy")
-            } footer: {
-                SettingsFootnote("No permissions, no administrator password, no network access, no telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays in one file on this Mac; delete it to start over.")
             }
         }
         .settingsForm()

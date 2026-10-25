@@ -33,7 +33,7 @@ public final class HistoryStore {
 
     public let url: URL
     public let limits: Limits
-    private let db: SQLiteDatabase
+    let db: SQLiteDatabase
 
     private var appIDs: [AppKey: Int64] = [:]
     private var pendingLive: [LiveReading] = []

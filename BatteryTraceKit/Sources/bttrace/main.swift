@@ -25,6 +25,8 @@ case "cost":
     CostCommand.run(&arguments)
 case "totals":
     TotalsCommand.run(&arguments)
+case "export":
+    ExportCommand.run(&arguments)
 default:
     print("""
     usage: bttrace <command> [options]
@@ -34,6 +36,7 @@ default:
                                        sample and attribute, like the app does
       cost [--interval 2] [--count 15] what sampling costs Battery Trace, per tick and per minute
       totals [--minutes 5]             minute-by-minute totals against the battery gauge
+      export [--to DIR] [--days 7]     the app's history as two CSV files
       stress cpu [--threads N] [--seconds 30]
       stress gpu [--seconds 30]        load generators for validation
       compare-top [--interval 5] [--count 3]
