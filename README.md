@@ -4,6 +4,19 @@
 
 # Battery Trace for Mac
 
+<p align="center">
+  <a href="https://github.com/kevinabouhanna/BatteryTrace/releases/latest"><img src="https://img.shields.io/github/v/release/kevinabouhanna/BatteryTrace?color=51FF70&label=release" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-1d1d1f" alt="macOS 14 or later">
+  <a href="https://github.com/kevinabouhanna/BatteryTrace/actions/workflows/ci.yml"><img src="https://github.com/kevinabouhanna/BatteryTrace/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT licence">
+</p>
+
+<p align="center">
+  <a href="https://github.com/kevinabouhanna/BatteryTrace/releases/latest/download/BatteryTrace.dmg"><b>Download</b></a> ·
+  <a href="docs/ATTRIBUTION.md">How it works</a> ·
+  <a href="docs/VALIDATION.md">Validation</a>
+</p>
+
 A menu bar app that shows where your Mac's power goes. It splits power by app,
 and shows what isn't an app at all: the display, the CPU, GPU, Neural Engine,
 memory and the rest of the chip.
@@ -18,11 +31,52 @@ memory and the rest of the chip.
 
 <p align="center"><img src="docs/images/popover-system.png" width="360" alt="The popover's System tab on a MacBook Air: 71% battery, 5.3 W from the battery, and a breakdown of CPU 502 mW, GPU 63 mW, memory 257 mW, display backlight about 2.07 W (an estimate), display controller 54 mW, other chip blocks 98 mW and 1.49 W unattributed, out of 4.53 W measured."></p>
 
+## Install
+
+For macOS 14 or later, on Apple silicon or Intel.
+
+1. [**Download BatteryTrace.dmg**](https://github.com/kevinabouhanna/BatteryTrace/releases/latest/download/BatteryTrace.dmg),
+   open it, and drag Battery Trace into **Applications**.
+2. Open Battery Trace. macOS says it can't check it for malicious software.
+   Close that message.
+3. Open **System Settings › Privacy & Security**, scroll down to **Security**,
+   click **Open Anyway** next to Battery Trace, and confirm with your password.
+
+> [!NOTE]
+> **Why the extra step?** Battery Trace isn't signed with a paid Apple
+> Developer ID yet, so macOS can't confirm who made it. The code is all here to
+> read, or to build yourself (below).
+
+Look for the ⚡︎ reading in your menu bar. Click it for the popover; right-click
+it, or click it with two fingers, for Settings and Quit. To have it start at
+login, turn on **Settings › General › Open at login**.
+
+### Update
+
+Battery Trace never goes online by itself, so it can't tell you about new
+versions. To hear about them, click **Watch › Custom › Releases** at the top of
+this page.
+
+To update, download the new disk image and drag Battery Trace into
+Applications, choosing **Replace**. Your settings and history are kept. macOS
+checks each new version afresh, so approve it with **Open Anyway** once more.
+
+### Uninstall
+
+Quit Battery Trace from its right-click menu, turn off **Open at login** first
+if you turned it on, and drag it from Applications to the Trash. To remove its
+history and settings too:
+
+```sh
+rm -rf ~/Library/"Application Support/Battery Trace"
+defaults delete app.batterytrace.BatteryTrace
+```
+
 ## Requirements
 
 - macOS 14 or later.
 - Apple silicon. Intel Macs run it with fewer metrics; see the limitations below.
-- Xcode 16 or later to build. Tested with Xcode 27.0 and Swift 6.4 on a
+- To build: Xcode 16 or later. Tested with Xcode 27.0 and Swift 6.4 on a
   MacBook Air (M1, 2020) running macOS 27.0.1.
 
 ## Build and run
