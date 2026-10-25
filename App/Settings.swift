@@ -36,6 +36,14 @@ final class SettingsStore: ObservableObject {
     @Published var countsBilledEnergy: Bool {
         didSet { defaults.set(countsBilledEnergy, forKey: "countsBilledEnergy") }
     }
+    /// Notify when an app keeps using a lot of power on battery. Off by default.
+    @Published var notifiesHungryApps: Bool {
+        didSet { defaults.set(notifiesHungryApps, forKey: "notifiesHungryApps") }
+    }
+    static let alertThresholds: [Double] = [1, 2, 3, 5]
+    @Published var alertThresholdWatts: Double {
+        didSet { defaults.set(alertThresholdWatts, forKey: "alertThresholdWatts") }
+    }
     @Published var closedInterval: Double {
         didSet { defaults.set(closedInterval, forKey: "closedInterval") }
     }
@@ -48,6 +56,9 @@ final class SettingsStore: ObservableObject {
         menuBarStyle = defaults.string(forKey: "menuBarStyle").flatMap(MenuBarStyle.init(rawValue:)) ?? .watts
         showsMenuBarIcon = defaults.object(forKey: "showsMenuBarIcon") == nil ? true : defaults.bool(forKey: "showsMenuBarIcon")
         countsBilledEnergy = defaults.object(forKey: "countsBilledEnergy") == nil ? true : defaults.bool(forKey: "countsBilledEnergy")
+        notifiesHungryApps = defaults.bool(forKey: "notifiesHungryApps")
+        let threshold = defaults.double(forKey: "alertThresholdWatts")
+        alertThresholdWatts = Self.alertThresholds.contains(threshold) ? threshold : 2
         let closed = defaults.double(forKey: "closedInterval")
         closedInterval = Self.closedIntervals.contains(closed) ? closed : 5
         let open = defaults.double(forKey: "openInterval")

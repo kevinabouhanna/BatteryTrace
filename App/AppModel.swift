@@ -47,6 +47,8 @@ final class AppModel: ObservableObject {
 
     /// Called whenever the menu bar text may have changed.
     var onMenuBarChange: (() -> Void)?
+    /// Every attribution, popover open or not (for notifications).
+    var onReport: ((IntervalReport) -> Void)?
 
     private(set) var isPopoverVisible = false
     private var recentWatts: [Double] = []
@@ -114,6 +116,7 @@ final class AppModel: ObservableObject {
     }
 
     private func receive(_ report: IntervalReport) {
+        onReport?(report)
         guard isPopoverVisible else { return }
         self.report = report
         reportsSinceRefresh += 1

@@ -49,7 +49,9 @@ For macOS 14 or later, on Apple silicon or Intel.
 
 Look for the ⚡︎ reading in your menu bar. Click it for the popover; right-click
 it, or click it with two fingers, for Settings and Quit. To have it start at
-login, turn on **Settings › General › Open at login**.
+login, turn on **Settings › General › Open at login**. To be told when an app
+keeps using a lot of power on battery, turn on **Tell me when an app uses a lot
+of power** there too; macOS asks for permission to show notifications.
 
 ### Update
 
@@ -177,7 +179,8 @@ Validation results: [docs/VALIDATION.md](docs/VALIDATION.md).
 
 ## Privacy
 
-No network access, no telemetry, no account. History stays in the SQLite file
+No network access, no telemetry, no account. No permissions either, unless you
+turn on notifications. History stays in the SQLite file
 above; delete it to start over. **Export History…** (in the right-click menu and
 Settings › General) writes it as two CSV files: energy by app, and the Mac's
 totals and parts, minute by minute.
@@ -187,12 +190,10 @@ totals and parts, minute by minute.
 1. **An optional privileged helper** (an `SMAppService` daemon running
    `powermetrics`), behind the existing `PowerMetricsProvider` protocol. It
    would give per-process energy for every process, and Apple's own CPU figure.
-2. **Notifications for battery-hungry apps.** For example: "Chrome has used 18%
-   of your battery in the last hour".
-3. **Per-model display calibration.** Ship curves for each MacBook panel, and
+2. **Per-model display calibration.** Ship curves for each MacBook panel, and
    model external displays and HDR.
-4. **Charging history and battery-health trend.**
-5. **Signed, notarized builds and an update channel.**
+3. **Charging history and battery-health trend.**
+4. **Signed, notarized builds and an update channel.**
 
 ## Project layout
 
