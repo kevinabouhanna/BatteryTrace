@@ -27,6 +27,11 @@ final class SettingsStore: ObservableObject {
     @Published var menuBarStyle: MenuBarStyle {
         didSet { defaults.set(menuBarStyle.rawValue, forKey: "menuBarStyle") }
     }
+    /// The ⚡︎ (or battery) symbol before the reading. The reading itself
+    /// always shows, so the item can still be clicked.
+    @Published var showsMenuBarIcon: Bool {
+        didSet { defaults.set(showsMenuBarIcon, forKey: "showsMenuBarIcon") }
+    }
     @Published var closedInterval: Double {
         didSet { defaults.set(closedInterval, forKey: "closedInterval") }
     }
@@ -37,6 +42,7 @@ final class SettingsStore: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         menuBarStyle = defaults.string(forKey: "menuBarStyle").flatMap(MenuBarStyle.init(rawValue:)) ?? .watts
+        showsMenuBarIcon = defaults.object(forKey: "showsMenuBarIcon") == nil ? true : defaults.bool(forKey: "showsMenuBarIcon")
         let closed = defaults.double(forKey: "closedInterval")
         closedInterval = Self.closedIntervals.contains(closed) ? closed : 5
         let open = defaults.double(forKey: "openInterval")
