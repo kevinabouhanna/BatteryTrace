@@ -120,7 +120,7 @@ with its app.
 
 ### Components
 
-| Scenario | CPU: ours / theirs | GPU: ours / theirs | ANE: ours / theirs |
+| Scenario | CPU: ours / theirs (with `tasks`) | GPU: ours / theirs | ANE: ours / theirs |
 |---|---|---|---|
 | Idle | 0.14 / 0.43 W | 6 / 3 mW | 0 / 0 |
 | CPU loop | 0.93 / 1.22 W | 1 / 1 mW | 0 / 0 |
@@ -129,25 +129,32 @@ with its app.
 
 **GPU and ANE agree to within 3%.**
 
-**CPU reads about 0.3 W lower than `powermetrics` in every scenario**
-(+0.29, +0.29, +0.26 and +0.35 W). Because the gap is constant rather than a
-ratio, the two tools are reading different counters, not making a scaling
-error:
+**In this run, CPU read about 0.3 W lower than `powermetrics` in every
+scenario** (+0.29, +0.29, +0.26 and +0.35 W). That gap comes with the way
+`powermetrics` ran here, not from the counters themselves.
 
-- Battery Trace reads PMP's cluster counters (`ECPU + PCPU`), which advance
-  continuously for any caller.
-- `powermetrics`' "CPU Power" matches the "Energy Model" counter
-  (`CPU Energy`). Without root that counter refreshes only about every
-  5 minutes. A 6-minute log saw one step, reading 0.64 W against PMP's 0.57 W
-  over the same span. `powermetrics`, as root, appears to get it fresh each
-  sample.
+With only its CPU sampler, `powermetrics` agrees with Battery Trace to about 1%.
+The check ran `powermetrics --samplers cpu_power -i 0` as root, taking a sample
+at the same moment as each of Battery Trace's own readings, so both covered
+the same 10-second intervals:
 
-These are two Apple estimates of the same thing, and neither is a meter.
-Battery Trace keeps PMP, the only live one available without root, and nothing
-is lost: what PMP doesn't count stays inside the measured total, as part of
-Unattributed. At idle the gap matters more: our CPU share is a third of
-`powermetrics`'. The planned privileged `powermetrics` helper (see the README's
-next features) would plug into the same `PowerMetricsProvider` seam.
+| Load | Battery Trace (PMP `ECPU + PCPU`) | `powermetrics`, CPU sampler only | Difference |
+|---|---:|---:|---:|
+| Idle, 8 intervals | — | — | +0.03 W on average |
+| 4-thread loop, 5 intervals | 1.30 W | 1.33 W | +0.6% |
+
+That check used a prototype privileged helper (PR #25), dropped because of
+this result: root adds nothing to the CPU figure. Raw files are in
+`validation/20261025-helper-cpu/`.
+
+The 0.3 W above appeared with the per-process `tasks` sampler on (part of
+`powermetrics`' default set) and `--show-process-energy`. Why that mode
+reports more CPU hasn't been pinned down.
+
+A third figure, the "Energy Model" counter (`CPU Energy`), refreshes only
+about every 5 minutes without root. One 6-minute log put it at 0.64 W against
+PMP's 0.57 W over the same span. Battery Trace uses PMP, which is live for any
+caller.
 
 ### Totals during these runs
 

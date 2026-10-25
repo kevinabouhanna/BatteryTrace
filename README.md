@@ -143,9 +143,10 @@ make measure                   # the built app's own CPU, Energy Impact and memo
 | UI | `App/` | `NSStatusItem` and `NSPopover` with SwiftUI. Views exist only while the popover is open. |
 
 A new metric is one type conforming to `ComponentSource` (energy) or
-`SnapshotSource` (anything else). A privileged source, such as a future
-`powermetrics` helper, would conform to `PowerMetricsProvider` and replace the
-unprivileged one without other changes.
+`SnapshotSource` (anything else). A privileged source would conform to
+`PowerMetricsProvider` and replace the unprivileged one without other changes.
+A `powermetrics` helper was built that way and measured, then dropped: its CPU
+figure matched Battery Trace's to about 1%.
 
 ### Private interfaces, and what happens if Apple changes them
 
@@ -166,9 +167,10 @@ All are looked up at run time. A missing one hides its metric; the app doesn't c
 - **Work done on an app's behalf is counted for whoever did it.** WindowServer
   draws windows, `coreaudiod` mixes audio, and the video decoder decodes video.
   Under heavy GPU load, macOS charges WindowServer for much of the GPU's time.
-- **The CPU row reads about 0.3 W below `powermetrics`.** Apple has two CPU
-  energy counters; the one `powermetrics` uses is only refreshed for root.
-  The difference stays inside Unattributed.
+- **`sudo powermetrics` with its per-process sampler showed about 0.3 W more
+  CPU.** With only its CPU sampler (`--samplers cpu_power`), it agrees with
+  Battery Trace to about 1%. Why the per-process sampler adds to it isn't
+  pinned down yet. See [docs/VALIDATION.md](docs/VALIDATION.md) §3.
 - **The display estimate is a model.** Out of the box it's a MacBook Air's
   curve scaled to your panel; **Settings › General › Display › Calibrate…**
   measures your own in a minute. It doesn't model HDR/XDR boost (it says when
@@ -192,10 +194,7 @@ totals and parts, minute by minute.
 
 ## Recommended next features
 
-1. **An optional privileged helper** (an `SMAppService` daemon running
-   `powermetrics`), behind the existing `PowerMetricsProvider` protocol. It
-   would give per-process energy for every process, and Apple's own CPU figure.
-2. **A Developer ID.** The Release workflow already signs and notarizes when
+1. **A Developer ID.** The Release workflow already signs and notarizes when
    the signing secrets are set ([docs/RELEASING.md](docs/RELEASING.md)); then
    the "Open Anyway" step goes away.
 
