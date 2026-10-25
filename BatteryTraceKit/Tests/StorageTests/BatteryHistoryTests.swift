@@ -8,7 +8,7 @@ import Testing
 @Suite struct BatteryHistoryTests {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent("BatteryTraceBattery-\(UUID().uuidString)")
 
-    func report(at date: Date, percent: Double, onAC: Bool, charging: Bool, health: Bool = true) -> IntervalReport {
+    func report(at date: Date, percent: Double, onAC: Bool, charging: Bool, health: Bool = true, macOS: Int? = nil) -> IntervalReport {
         var system = SystemSnapshot()
         system.battery.isPresent = true
         system.battery.percent = percent
@@ -18,6 +18,7 @@ import Testing
             system.battery.designCapacityMAh = 4382
             system.battery.nominalCapacityMAh = 3360
             system.battery.cycleCount = 625
+            system.battery.macOSMaximumCapacityPercent = macOS
         }
         return IntervalReport(endUptimeNS: 0, endDate: date, durationSeconds: 60, onExternalPower: onAC,
                               measuredJoules: nil, measuredSource: nil, components: [], apps: [],
@@ -58,8 +59,27 @@ import Testing
         let health = try history.healthHistory()
         #expect(health.count == 1)
         #expect(healthBuffered == health)
-        #expect(abs(health[0].healthPercent - 76.68) < 0.01)
+        #expect(abs(health[0].gaugePercent - 76.68) < 0.01)
+        #expect(health[0].macOSPercent == nil)
         #expect(health[0].cycles == 625)
+    }
+
+    @Test func macOSsFigureIsKeptBesideTheGaugesAndTrendsOnItsOwn() throws {
+        let history = try HistoryStore(url: directory.appendingPathComponent("history.sqlite"))
+        let day: Double = 86400
+        let now = Date()
+        // Two days from before 0.8.0 (gauge only), then two with macOS's figure.
+        history.record(report(at: now.addingTimeInterval(-3 * day), percent: 80, onAC: false, charging: false))
+        history.record(report(at: now.addingTimeInterval(-2 * day), percent: 80, onAC: false, charging: false))
+        history.record(report(at: now.addingTimeInterval(-1 * day), percent: 80, onAC: false, charging: false, macOS: 81))
+        history.record(report(at: now, percent: 80, onAC: false, charging: false, macOS: 80))
+        try history.flush(now: now)
+        let points = try history.healthHistory()
+        #expect(points.map(\.macOSPercent) == [nil, nil, 81, 80])
+        #expect(points.allSatisfy { abs($0.gaugePercent - 76.68) < 0.01 })
+        // The trend never mixes the two: 76.7 → 81 would be a jump that isn't there.
+        #expect(HealthPoint.trend(points).map(\.percent) == [81, 80])
+        #expect(HealthPoint.trend(Array(points.prefix(2))).count == 2)
     }
 
     @Test func aSummaryCountsTimeAndChargeUsedOnBatteryAndChargingSessions() {

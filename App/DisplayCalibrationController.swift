@@ -14,6 +14,8 @@ final class DisplayCalibrationController: ObservableObject {
 
     @Published private(set) var state: State = .idle
     let isAvailable: Bool
+    /// This Mac's built-in panel, which the estimate is scaled to.
+    let panel = DisplayBacklightSource.builtInPanel()
     private let settings: SettingsStore
     private let cancelFlag = CancelFlag()
 

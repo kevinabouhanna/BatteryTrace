@@ -29,7 +29,7 @@ memory and the rest of the chip.
   [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md).
 - **No root, no permissions, no dependencies.**
 
-<p align="center"><img src="docs/images/popover-system.png" width="360" alt="The popover's System tab on a MacBook Air: 80% battery, on the power adapter, drawing 6.19 W. The breakdown shows CPU 305 mW, GPU 65 mW, memory 212 mW, display backlight about 1.18 W (an estimate, not calibrated on this Mac), display controller 41 mW, other chip blocks 100 mW and 2.87 W unattributed, out of 4.77 W measured."></p>
+<p align="center"><img src="docs/images/popover-system.png" width="360" alt="The popover's System tab on a MacBook Air: 60% battery, 5.63 W from the battery, health 80%. The breakdown shows CPU 342 mW, GPU 33 mW, memory 185 mW, display backlight about 3.52 W (an estimate, at 84% brightness), display controller 39 mW, other chip blocks 105 mW and 1.46 W unattributed, out of 5.68 W measured."></p>
 
 ## Install
 
@@ -122,12 +122,12 @@ make measure                   # the built app's own CPU, Energy Impact and memo
 |---|---|---|
 | **Watts** in the menu bar and summary | Total system power from the SMC's power sensor, averaged over the last three readings | Measured |
 | **"from the battery"** / **"power draw, not from battery"** | On battery, that power drains the battery. On the adapter it doesn't, and the label says so. | — |
-| **Time remaining**, health, cycles, temperature | From macOS's battery gauge. Temperature comes from the SMC. | Measured (time remaining is macOS's own estimate) |
+| **Time remaining**, health, cycles, temperature | From macOS's battery gauge. Health is macOS's own "Maximum Capacity", as System Settings shows it (read from `system_profiler` every 6 hours); the gauge's capacity in mAh is shown beside it. Temperature comes from the SMC. | Measured (time remaining is macOS's own estimate) |
 | **Apps**, with share and energy (mWh) | The CPU, GPU and Neural Engine energy the chip measured, split by the kernel's per-app energy counters. Helpers and XPC services count for their app. | **Estimated** (marked "Estimated") |
 | **Child processes** | That app's CPU share, split by each process's own energy counter. The rest is "Other or exited processes". | Estimated |
 | **System / Unattributed** | Everything that isn't an app: display, memory, other chip blocks, and the measured power no counter accounts for | Measured, except the display |
 | **CPU, GPU, Neural Engine, Memory** | The chip's energy counters (IOReport, PMP group) | Measured by the chip's power manager |
-| **Display backlight** | Brightness mapped to watts by a curve fitted against the power sensor: this Mac's own after **Settings › Measurement › Calibrate…**, otherwise a MacBook Air's, scaled | **Estimate** (labelled) |
+| **Display backlight** | Brightness mapped to watts by a curve fitted against the power sensor: this Mac's own after **Settings › Measurement › Calibrate…**, otherwise a measured MacBook Air curve scaled to this Mac's panel size and brightness | **Estimate** (labelled) |
 | **Display controller, other chip blocks** | The chip's display pipes; video codecs, image processor, always-on blocks | Measured |
 | **Unattributed** | Measured total minus every component: Wi-Fi, SSD, audio, panel electronics, power conversion | Measured remainder |
 | **Totals for 5 min, 1 hour, 24 hours** | The battery gauge's own running averages when they cover the window, otherwise the power sensor | Measured |
@@ -171,9 +171,10 @@ All are looked up at run time. A missing one hides its metric; the app doesn't c
   CPU.** With only its CPU sampler (`--samplers cpu_power`), it agrees with
   Battery Trace to about 1%. Why the per-process sampler adds to it isn't
   pinned down yet. See [docs/VALIDATION.md](docs/VALIDATION.md) §3.
-- **The display estimate is a model.** Out of the box it's a MacBook Air's
-  curve scaled to your panel; **Settings › Measurement › Display › Calibrate…**
-  measures your own in a minute. It doesn't model HDR/XDR boost (it says when
+- **The display estimate is a model.** Out of the box it's a curve measured on
+  an M1 MacBook Air, scaled to your Mac's own panel by its size and peak
+  brightness; **Settings › Measurement › Display › Calibrate…** measures your
+  panel itself in under two minutes. It doesn't model HDR/XDR boost (it says when
   HDR is showing) or ProMotion.
 - **Unattributed is typically 40–50% at light load,** and more while
   streaming (Wi-Fi, audio). It isn't spread across apps.

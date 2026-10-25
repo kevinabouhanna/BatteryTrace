@@ -66,8 +66,9 @@ struct SystemSection: View {
         case .displayBacklight:
             var parts: [String] = []
             if let brightness = system.display.brightness { parts.append(String(format: "Brightness %.0f%%", brightness * 100)) }
-            parts.append(system.display.calibratedOnThisMac ? "calibrated here" : "not calibrated")
-            if DisplayConditions.builtInShowsHDR { parts.append("HDR on: may read low") }
+            // The badge already says it's an estimate; say when it's this Mac's own.
+            if system.display.calibratedOnThisMac { parts.append("calibrated") }
+            if DisplayConditions.builtInShowsHDR { parts.append("HDR: may read low") }
             return parts.joined(separator: " · ")
         case .cpu:
             return system.cpuLoad.perCore.isEmpty ? nil : String(format: "Load %.0f%% across %d cores", system.cpuLoad.average * 100, system.cpuLoad.perCore.count)

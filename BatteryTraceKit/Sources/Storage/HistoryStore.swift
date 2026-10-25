@@ -49,10 +49,13 @@ public final class HistoryStore {
     }
 
     struct DailyBattery {
+        /// The gauge's capacity relative to new.
         var health: Double
         var nominalMAh: Int
         var designMAh: Int
         var cycles: Int?
+        /// macOS's own "Maximum Capacity", when it gave one.
+        var macOSPercent: Int?
     }
 
     var pendingDaily: [Int64: DailyBattery] = [:]
@@ -101,6 +104,14 @@ public final class HistoryStore {
                 try db.execute("PRAGMA user_version = 1")
             }
         }
+        if version < 2 {
+            // 0.8.0: macOS's own "Maximum Capacity" each day, beside the
+            // gauge's figure, which `health` keeps holding.
+            try db.transaction {
+                try db.execute("ALTER TABLE battery_daily ADD COLUMN macos_pct INTEGER")
+                try db.execute("PRAGMA user_version = 2")
+            }
+        }
     }
 
     // MARK: Recording
@@ -120,8 +131,10 @@ public final class HistoryStore {
         meta.charging = report.system.battery.isCharging
         pendingMeta[minute] = meta
         let battery = report.system.battery
-        if let health = battery.healthPercent, let nominal = battery.nominalCapacityMAh, let design = battery.designCapacityMAh {
-            pendingDaily[Self.day(of: report.endDate)] = DailyBattery(health: health, nominalMAh: nominal, designMAh: design, cycles: battery.cycleCount)
+        if let gauge = battery.gaugeCapacityPercent, let nominal = battery.nominalCapacityMAh, let design = battery.designCapacityMAh {
+            pendingDaily[Self.day(of: report.endDate)] = DailyBattery(health: gauge, nominalMAh: nominal, designMAh: design,
+                                                                     cycles: battery.cycleCount,
+                                                                     macOSPercent: battery.macOSMaximumCapacityPercent)
         }
     }
 
@@ -140,9 +153,10 @@ public final class HistoryStore {
         let meta = pendingMeta
         let daily = pendingDaily
         try db.transaction {
-            let insertDaily = try db.statement("INSERT OR REPLACE INTO battery_daily VALUES (?, ?, ?, ?, ?)")
+            let insertDaily = try db.statement(
+                "INSERT OR REPLACE INTO battery_daily (day, health, nominal_mah, design_mah, cycles, macos_pct) VALUES (?, ?, ?, ?, ?, ?)")
             for (day, reading) in daily {
-                try insertDaily.bind(day, reading.health, reading.nominalMAh, reading.designMAh, reading.cycles).run()
+                try insertDaily.bind(day, reading.health, reading.nominalMAh, reading.designMAh, reading.cycles, reading.macOSPercent).run()
                 insertDaily.reset()
             }
             let insertLive = try db.statement("INSERT OR REPLACE INTO live VALUES (?, ?, ?, ?)")

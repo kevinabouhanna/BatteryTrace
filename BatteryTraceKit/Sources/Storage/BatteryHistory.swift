@@ -11,9 +11,20 @@ public struct ChargePoint: Sendable, Hashable {
 /// One day's health reading.
 public struct HealthPoint: Sendable, Hashable {
     public var day: Date
-    /// Nominal ÷ design capacity, as System Settings shows "Maximum Capacity".
-    public var healthPercent: Double
+    /// The gauge's capacity relative to new: nominal ÷ design.
+    public var gaugePercent: Double
+    /// macOS's own "Maximum Capacity", from 0.8.0 on, when macOS gave one.
+    public var macOSPercent: Int?
     public var cycles: Int?
+
+    /// The days to draw a trend from, all in one measure: macOS's figure if
+    /// the latest day has it (and only the days that do), else the gauge's.
+    public static func trend(_ points: [HealthPoint]) -> [(day: Date, percent: Double)] {
+        if points.last?.macOSPercent != nil {
+            return points.compactMap { point in point.macOSPercent.map { (point.day, Double($0)) } }
+        }
+        return points.map { ($0.day, $0.gaugePercent) }
+    }
 }
 
 /// What a stretch of charge history adds up to.
@@ -46,12 +57,14 @@ extension HistoryStore {
     /// One reading a day, oldest first, buffered day included.
     public func healthHistory() throws -> [HealthPoint] {
         var points: [Int64: HealthPoint] = [:]
-        try db.statement("SELECT day, health, cycles FROM battery_daily ORDER BY day").rows { row in
-            points[row.int(0)] = HealthPoint(day: Date(timeIntervalSince1970: Double(row.int(0))), healthPercent: row.double(1),
+        try db.statement("SELECT day, health, cycles, macos_pct FROM battery_daily ORDER BY day").rows { row in
+            points[row.int(0)] = HealthPoint(day: Date(timeIntervalSince1970: Double(row.int(0))), gaugePercent: row.double(1),
+                                             macOSPercent: row.isNull(3) ? nil : Int(row.int(3)),
                                              cycles: row.isNull(2) ? nil : Int(row.int(2)))
         }
         for (day, reading) in pendingDaily {
-            points[day] = HealthPoint(day: Date(timeIntervalSince1970: Double(day)), healthPercent: reading.health, cycles: reading.cycles)
+            points[day] = HealthPoint(day: Date(timeIntervalSince1970: Double(day)), gaugePercent: reading.health,
+                                      macOSPercent: reading.macOSPercent, cycles: reading.cycles)
         }
         return points.values.sorted { $0.day < $1.day }
     }

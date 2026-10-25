@@ -43,10 +43,6 @@ struct PopoverView: View {
 
             Divider()
             HStack(spacing: 12) {
-                Label("No root, no permissions", systemImage: "lock.shield")
-                    .labelStyle(.titleAndIcon)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 Spacer()
                 Button("Settings…", action: openSettings)
                 Button("Quit") { NSApp.terminate(nil) }

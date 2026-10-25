@@ -12,8 +12,11 @@ public struct BatterySnapshot: Sendable, Hashable, Codable {
     public var minutesToFull: Int?
     public var cycleCount: Int?
     public var designCapacityMAh: Int?
-    /// What the battery holds when full today, as macOS rates it.
+    /// What the battery holds when full today, as the gauge rates it.
     public var nominalCapacityMAh: Int?
+    /// macOS's own "Maximum Capacity", as System Settings shows it, when
+    /// macOS gives one. Not the same as the gauge's capacity over design.
+    public var macOSMaximumCapacityPercent: Int?
     public var temperatureC: Double?
     public var voltageV: Double?
     /// Negative while discharging.
@@ -21,8 +24,14 @@ public struct BatterySnapshot: Sendable, Hashable, Codable {
 
     public init() {}
 
-    /// Capacity relative to new. Matches "Maximum Capacity" in System Settings.
+    /// Battery health as the user knows it: macOS's "Maximum Capacity" when
+    /// there is one, otherwise what the gauge holds relative to new.
     public var healthPercent: Double? {
+        macOSMaximumCapacityPercent.map(Double.init) ?? gaugeCapacityPercent
+    }
+
+    /// What the gauge says a full charge holds today, relative to new.
+    public var gaugeCapacityPercent: Double? {
         guard let design = designCapacityMAh, design > 0, let nominal = nominalCapacityMAh else { return nil }
         return Double(nominal) / Double(design) * 100
     }

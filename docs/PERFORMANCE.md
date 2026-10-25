@@ -20,6 +20,10 @@ MacBook Air (M1, 2020) running macOS 27.0.1, on battery, with Low Power Mode on.
 - The CPU figures come from the process's own CPU time (`ps`) before and after,
   and from `top`'s second sample, which covers the whole span. Reproduce them
   with `make measure` (`Scripts/measure-app.sh`).
+- **Battery health** is macOS's own figure, which only `system_profiler` hands
+  out. Battery Trace runs `system_profiler SPPowerDataType -detailLevel mini`
+  at launch and every 6 hours after: 0.27 s, 0.12 s of CPU, off the sampling
+  queue. Averaged over 6 hours that is 0.0006% of a core.
 
 ### Where the time goes
 

@@ -12,10 +12,12 @@ import IOKit
 /// The curve was fitted on a MacBook Air (M1, 2020) by stepping the slider
 /// with the Mac idle and watching the system power sensor, with the chip's own
 /// measured energy subtracted (`DisplayCalibrator`): about 5 W at full
-/// brightness, 1.2 W at half. Other panels are scaled by peak brightness ×
-/// area relative to that one, which is rough, until the Mac measures its own
-/// panel (Settings › General › Display › Calibrate…); then its own curve is
-/// used, unscaled. Power that doesn't change with brightness (the panel's
+/// brightness, 1.2 W at half. On any other Mac it is scaled to that Mac's own
+/// built-in panel, by area × peak brightness relative to the Air's: a 16-inch
+/// panel twice the area at the same brightness gets twice the power. That is
+/// rough for a different kind of panel (mini-LED, say), so the Mac can measure
+/// its own (Settings › Measurement › Display › Calibrate…); then its own curve
+/// is used, unscaled. Power that doesn't change with brightness (the panel's
 /// electronics) can't be separated from the rest of the Mac, so it stays in
 /// Unattributed.
 ///
@@ -31,12 +33,62 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
     /// The panel the reference curve was fitted on: 420 nits, 286.9 × 179.3 mm.
     static let referencePeakNits = 420.0
     static let referenceAreaMM2 = 286.87 * 179.29
+    /// The most the brightness slider reaches on any built-in panel: its SDR
+    /// peak, 400–600 nits. An XDR panel may report its HDR peak (1600 nits),
+    /// which the slider never drives the whole panel to; that would triple
+    /// the estimate.
+    static let sdrPeakCapNits = 600.0
 
-    /// The reference curve's scale for this panel, by peak brightness × area.
+    /// This Mac's built-in panel, as the estimate sees it.
+    public struct Panel: Sendable, Equatable {
+        public var widthMM: Double
+        public var heightMM: Double
+        /// Peak brightness the slider reaches, capped at `sdrPeakCapNits`.
+        public var peakNits: Double
+        /// Whether the panel reported its peak; if not, the reference's is assumed.
+        public var peakReported: Bool
+
+        public var diagonalInches: Double { (widthMM * widthMM + heightMM * heightMM).squareRoot() / 25.4 }
+
+        /// The reference curve's scale for this panel, by area × peak brightness.
+        public var scale: Double {
+            min(4, max(0.5, (widthMM * heightMM * peakNits) / (DisplayBacklightSource.referenceAreaMM2 * DisplayBacklightSource.referencePeakNits)))
+        }
+
+        /// The estimate at full brightness, before any calibration.
+        public var estimatedFullBrightnessWatts: Double { scale * BacklightCurve.reference.watts(slider: 1) }
+    }
+
+    /// The built-in display's size and peak brightness, or nil without one.
+    public static func builtInPanel() -> Panel? {
+        guard let display = builtInDisplayID() else { return nil }
+        let backlight = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleARMBacklight"))
+        defer { if backlight != 0 { IOObjectRelease(backlight) } }
+        return panel(display: display, backlight: backlight)
+    }
+
+    static func panel(display: CGDirectDisplayID, backlight: io_registry_entry_t) -> Panel? {
+        let size = CGDisplayScreenSize(display)
+        guard size.width > 0, size.height > 0 else { return nil }
+        let reported = peakNits(backlight)
+        return Panel(widthMM: Double(size.width), heightMM: Double(size.height),
+                     peakNits: min(reported ?? referencePeakNits, sdrPeakCapNits), peakReported: reported != nil)
+    }
+
+    private static func builtInDisplayID() -> CGDirectDisplayID? {
+        var count: UInt32 = 0
+        var ids = [CGDirectDisplayID](repeating: 0, count: 16)
+        guard CGGetOnlineDisplayList(UInt32(ids.count), &ids, &count) == .success else { return nil }
+        return ids.prefix(Int(count)).first { CGDisplayIsBuiltin($0) != 0 }
+    }
+
+    /// This Mac's panel, when it has a built-in one.
+    public let panel: Panel?
+    /// The reference curve's scale for this panel.
     private let panelScale: Double
     private var curve = BacklightCurve.reference
     private var scale: Double
-    /// Set when this Mac measured its own panel (Settings › Calibrate…).
+    /// Set when this Mac measured its own panel (Settings › Measurement › Calibrate…).
     public private(set) var calibration: DisplayCalibration?
     private let backlight: io_registry_entry_t
     private var lastWatts: Double?
@@ -51,23 +103,15 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
         let services = PrivateSymbols.open("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices")
         getBrightness = PrivateSymbols.function("DisplayServicesGetBrightness", in: services, as: GetBrightness.self)
 
-        var count: UInt32 = 0
-        var ids = [CGDirectDisplayID](repeating: 0, count: 16)
-        if CGGetOnlineDisplayList(UInt32(ids.count), &ids, &count) == .success {
-            builtInDisplay = ids.prefix(Int(count)).first { CGDisplayIsBuiltin($0) != 0 }
-        } else {
-            builtInDisplay = nil
-        }
+        builtInDisplay = Self.builtInDisplayID()
 
-        // Scale the reference curve by this panel's peak brightness × area.
-        var panelScale = 1.0
+        // Scale the reference curve to this panel: area × peak brightness.
         if let display = builtInDisplay {
-            let size = CGDisplayScreenSize(display)
-            let area = Double(size.width * size.height)
-            let nits = Self.peakNits(backlight) ?? Self.referencePeakNits
-            if area > 0 { panelScale = min(4, max(0.5, (nits * area) / (Self.referencePeakNits * Self.referenceAreaMM2))) }
+            panel = Self.panel(display: display, backlight: backlight)
+        } else {
+            panel = nil
         }
-        self.panelScale = panelScale
+        panelScale = panel?.scale ?? 1
         scale = panelScale
 
         if builtInDisplay == nil {
@@ -76,8 +120,9 @@ public final class DisplayBacklightSource: ComponentSource, SnapshotSource {
             diagnostics.append("no brightness reading: no display power estimate")
         } else {
             isAvailable = true
-            diagnostics.append(String(format: "brightness from %@; model ≈ %.2f W at full brightness (estimate, scale %.2f)",
+            diagnostics.append(String(format: "brightness from %@; %.1f-inch panel, %.0f nits%@; model ≈ %.2f W at full brightness (estimate, scale %.2f)",
                                       getBrightness != nil ? "DisplayServices" : "IORegistry (may be stale)",
+                                      panel?.diagonalInches ?? 0, panel?.peakNits ?? 0, panel?.peakReported == false ? " (assumed)" : "",
                                       curve.watts(slider: 1) * scale, scale))
         }
     }

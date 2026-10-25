@@ -179,21 +179,34 @@ struct MeasurementSettingsPane: View {
 
             if calibration.isAvailable {
                 Section {
-                    LabeledContent("Backlight estimate") {
-                        Text(settings.displayCalibration.map { "Calibrated on this Mac, \($0.date.formatted(date: .abbreviated, time: .omitted))" }
-                             ?? "Scaled from a MacBook Air")
-                            .foregroundStyle(.secondary)
+                    if let panel = calibration.panel {
+                        LabeledContent("This Mac's display") {
+                            Text(String(format: "%.1f-inch, up to %.0f nits", panel.diagonalInches, panel.peakNits))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    LabeledContent("Backlight at full brightness") {
+                        Text(fullBrightness).foregroundStyle(.secondary)
                     }
                     calibrationRow
                 } header: {
                     Text("Display")
                 } footer: {
-                    SettingsFootnote("No sensor measures the display, so its power is an estimate from brightness. Calibrating measures this Mac's own panel: for under two minutes the display dims and brightens while the Mac stays idle, then your brightness is put back.")
+                    SettingsFootnote("No sensor measures the display. Until it's calibrated, its power is estimated for this display from its size and peak brightness, with a curve measured on an M1 MacBook Air; other kinds of panel can differ. Calibrating measures this Mac's own: for under two minutes the display dims and brightens while the Mac stays idle, then your brightness is put back.")
                 }
             }
 
         }
         .settingsForm()
+    }
+
+    private var fullBrightness: String {
+        if let measured = settings.displayCalibration, measured.isTrustworthy {
+            return String(format: "%.1f W, measured on this Mac %@", measured.curve.watts(slider: 1),
+                          measured.date.formatted(date: .abbreviated, time: .omitted))
+        }
+        guard let panel = calibration.panel else { return "Estimated" }
+        return String(format: "About %.1f W, estimated", panel.estimatedFullBrightnessWatts)
     }
 
     @ViewBuilder
@@ -319,7 +332,7 @@ struct AboutSettingsPane: View {
             }
 
             Section {
-                Text("No permissions, no administrator password, no telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays on this Mac. It goes online only to ask GitHub for the newest version: when you check, or once a day if you turn that on.")
+                Text("No telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays on this Mac. It goes online only to ask GitHub for the newest version: when you check, or once a day if you turn that on.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
