@@ -75,7 +75,7 @@ driver costs about 0.65 ms per read.
 P_backlight(s) = k × (−0.085·s + 5.12·s²)  W      s = brightness slider, 0…1
 ```
 
-- **This Mac's own curve, when it has one.** Settings › General › Display ›
+- **This Mac's own curve, when it has one.** Settings › Measurement › Display ›
   **Calibrate…** steps the slider for about a minute with the Mac idle, reads
   `PSTR`, subtracts the chip's measured energy, and fits
   `rest = a + b·s + c·s²`. A fit quality (R²) below 0.6 means something else was

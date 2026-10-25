@@ -20,8 +20,7 @@ struct GeneralSettingsPane: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var launchAtLogin: LaunchAtLogin
     @ObservedObject var alerts: PowerAlerts
-    @ObservedObject var calibration: DisplayCalibrationController
-    var onExport: () -> Void = {}
+    @ObservedObject var updates: UpdateChecker
 
     var body: some View {
         Form {
@@ -50,15 +49,6 @@ struct GeneralSettingsPane: View {
                 Text("Menu bar")
             } footer: {
                 SettingsFootnote("Power is the whole Mac's, measured live. Without the icon, the reading alone stays in the menu bar. Right-click it, or click it with two fingers, for Settings and Quit.")
-            }
-
-            Section {
-                Toggle("Count work macOS services do for an app", isOn: $settings.countsBilledEnergy)
-                    .toggleStyle(.switch)
-            } header: {
-                Text("Apps")
-            } footer: {
-                SettingsFootnote("When a service such as Spotlight's indexer works for an app, macOS records it. On, that work counts for the app; off, for the service that did it, as in Activity Monitor. Totals don't change.")
             }
 
             Section {
@@ -95,6 +85,76 @@ struct GeneralSettingsPane: View {
             } footer: {
                 SettingsFootnote("For an app that keeps it up for 10 minutes, on battery only, and at most once an hour per app. macOS asks for permission the first time you turn this on.")
             }
+            Section {
+                LabeledContent {
+                    HStack {
+                        if case .available(let release) = updates.state {
+                            Button("Download") { updates.download(release) }
+                        }
+                        Button("Check Now") { updates.check(interactive: true) }
+                            .disabled(updates.state == .checking)
+                    }
+                } label: {
+                    Text("Battery Trace \(updates.current.map(String.init(describing:)) ?? "development build")")
+                    SettingsRowDetail(updateStatus)
+                }
+                Toggle("Check automatically once a day", isOn: $settings.checksForUpdates)
+                    .toggleStyle(.switch)
+            } header: {
+                Text("Updates")
+            } footer: {
+                SettingsFootnote("One request to GitHub, which carries nothing about your Mac. Nothing installs by itself: Download opens the disk image.")
+            }
+
+        }
+        .settingsForm()
+    }
+
+    private var updateStatus: String {
+        switch updates.state {
+        case .idle: "Not checked yet"
+        case .checking: "Checking…"
+        case .upToDate(let checked): "Up to date, checked \(checked.formatted(date: .omitted, time: .shortened))"
+        case .available(let release): "Version \(release.version) is available"
+        case .failed: "Couldn't check. Try again later."
+        }
+    }
+
+    @ViewBuilder
+    private var loginStatus: some View {
+        switch launchAtLogin.status {
+        case .requiresApproval:
+            LabeledContent {
+                Button("Open Login Items") { launchAtLogin.openLoginItemsSettings() }
+            } label: {
+                SettingsRowDetail("Waiting for your approval in System Settings › General › Login Items.")
+            }
+        case .notFound where launchAtLogin.attempted:
+            SettingsRowDetail("macOS can't find this copy of Battery Trace to open at login. Move it to Applications and try again.")
+        default:
+            if let error = launchAtLogin.lastError { SettingsRowDetail(error) }
+        }
+    }
+}
+
+// MARK: - Measurement
+
+/// How Battery Trace measures: who a service's work counts for, how often it
+/// samples, and this Mac's display curve.
+struct MeasurementSettingsPane: View {
+    @ObservedObject var settings: SettingsStore
+    @ObservedObject var calibration: DisplayCalibrationController
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Count work macOS services do for an app", isOn: $settings.countsBilledEnergy)
+                    .toggleStyle(.switch)
+            } header: {
+                Text("Apps")
+            } footer: {
+                SettingsFootnote("When a service such as Spotlight's indexer works for an app, macOS records it. On, that work counts for the app; off, for the service that did it, as in Activity Monitor. Totals don't change.")
+            }
 
             Section {
                 LabeledContent("While the popover is closed") {
@@ -128,24 +188,10 @@ struct GeneralSettingsPane: View {
                 } header: {
                     Text("Display")
                 } footer: {
-                    SettingsFootnote("No sensor measures the display, so its power is an estimate from brightness. Calibrating measures this Mac's own panel: for about a minute the display dims and brightens while the Mac stays idle, then your brightness is put back.")
+                    SettingsFootnote("No sensor measures the display, so its power is an estimate from brightness. Calibrating measures this Mac's own panel: for under two minutes the display dims and brightens while the Mac stays idle, then your brightness is put back.")
                 }
             }
 
-            Section {
-                LabeledContent("Export as CSV") {
-                    Button("Export…", action: onExport)
-                }
-                LabeledContent("History file") {
-                    Button("Show in Finder") {
-                        NSWorkspace.shared.activateFileViewerSelecting([HistoryService.defaultURL])
-                    }
-                }
-            } header: {
-                Text("History")
-            } footer: {
-                SettingsFootnote("Kept on this Mac: totals minute by minute for 7 days, apps minute by minute for 24 hours and hour by hour for 7 days. Export writes two spreadsheet-ready files: energy by app, and the Mac's totals and parts. Delete the history file to start over.")
-            }
         }
         .settingsForm()
     }
@@ -185,20 +231,53 @@ struct GeneralSettingsPane: View {
         }
     }
 
-    @ViewBuilder
-    private var loginStatus: some View {
-        switch launchAtLogin.status {
-        case .requiresApproval:
-            LabeledContent {
-                Button("Open Login Items") { launchAtLogin.openLoginItemsSettings() }
-            } label: {
-                SettingsRowDetail("Waiting for your approval in System Settings › General › Login Items.")
+}
+
+// MARK: - History
+
+/// What Battery Trace keeps, how big it is, and getting it out.
+struct HistorySettingsPane: View {
+    var onExport: () -> Void = {}
+    @State private var fileSize: String?
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Totals and parts of the Mac", value: "Minute by minute, 7 days")
+                LabeledContent("Apps", value: "Minute by minute for 24 hours, then hourly for 7 days")
+                LabeledContent("Battery health", value: "One reading a day, all of them")
+                LabeledContent("Size on disk", value: fileSize ?? "—")
+            } header: {
+                Text("Kept on this Mac")
+            } footer: {
+                SettingsFootnote("Readings older than that are removed every hour, and the file is capped at 64 MB. Nothing leaves this Mac.")
             }
-        case .notFound where launchAtLogin.attempted:
-            SettingsRowDetail("macOS can't find this copy of Battery Trace to open at login. Move it to Applications and try again.")
-        default:
-            if let error = launchAtLogin.lastError { SettingsRowDetail(error) }
+
+            Section {
+                LabeledContent("Export as CSV") {
+                    Button("Export…", action: onExport)
+                }
+                LabeledContent("History file") {
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([HistoryService.defaultURL])
+                    }
+                }
+            } footer: {
+                SettingsFootnote("Export writes two spreadsheet-ready files: energy by app, and the Mac's totals and parts, minute by minute. To start over, quit Battery Trace and delete the history file.")
+            }
         }
+        .settingsForm()
+        .onAppear { fileSize = Self.sizeOnDisk() }
+    }
+
+    /// The database with its write-ahead log, as Finder would count it.
+    static func sizeOnDisk() -> String? {
+        let base = HistoryService.defaultURL.path
+        let bytes = ["", "-wal", "-shm"].compactMap {
+            (try? FileManager.default.attributesOfItem(atPath: base + $0))?[.size] as? Int64
+        }
+        guard !bytes.isEmpty else { return nil }
+        return ByteCountFormatter.string(fromByteCount: bytes.reduce(0, +), countStyle: .file)
     }
 }
 
@@ -207,9 +286,6 @@ struct GeneralSettingsPane: View {
 /// Which version this is, where to read more, what it reads, and where its
 /// history lives.
 struct AboutSettingsPane: View {
-    @ObservedObject var settings: SettingsStore
-    @ObservedObject var updates: UpdateChecker
-
     private var version: String {
         let info = Bundle.main.infoDictionary
         guard let short = info?["CFBundleShortVersionString"] as? String else { return "Development build" }
@@ -235,25 +311,6 @@ struct AboutSettingsPane: View {
             }
 
             Section {
-                LabeledContent {
-                    HStack {
-                        if case .available(let release) = updates.state {
-                            Button("Download") { updates.download(release) }
-                        }
-                        Button("Check Now") { updates.check(interactive: true) }
-                            .disabled(updates.state == .checking)
-                    }
-                } label: {
-                    Text("Updates")
-                    SettingsRowDetail(updateStatus)
-                }
-                Toggle("Check automatically once a day", isOn: $settings.checksForUpdates)
-                    .toggleStyle(.switch)
-            } footer: {
-                SettingsFootnote("Asks GitHub which version is newest: one request, which carries nothing about your Mac. Nothing is installed by itself. Download opens the disk image, to drag into Applications as before.")
-            }
-
-            Section {
                 link("How it works", "How power is attributed", "https://github.com/kevinabouhanna/BatteryTrace/blob/main/docs/ATTRIBUTION.md")
                 link("What's new", "Release notes", "https://github.com/kevinabouhanna/BatteryTrace/releases/latest")
                 link("Source code", "On GitHub", "https://github.com/kevinabouhanna/BatteryTrace")
@@ -271,16 +328,6 @@ struct AboutSettingsPane: View {
             }
         }
         .settingsForm()
-    }
-
-    private var updateStatus: String {
-        switch updates.state {
-        case .idle: "Not checked yet"
-        case .checking: "Checking…"
-        case .upToDate(let checked): "Up to date, checked \(checked.formatted(date: .omitted, time: .shortened))"
-        case .available(let release): "Version \(release.version) is available"
-        case .failed: "Couldn't check. Try again later."
-        }
     }
 
     private func link(_ title: String, _ text: String, _ address: String) -> some View {
@@ -327,7 +374,10 @@ extension View {
     func settingsForm() -> some View {
         formStyle(.grouped)
             .scrollDisabled(true)
-            .frame(width: SettingsMetrics.paneWidth)
+            // Up to the pane's width, not exactly it: the scroll view around
+            // the pane fixes the width, and a scroll bar shown always takes
+            // its width from inside it.
+            .frame(maxWidth: SettingsMetrics.paneWidth)
             .fixedSize(horizontal: false, vertical: true)
     }
 }

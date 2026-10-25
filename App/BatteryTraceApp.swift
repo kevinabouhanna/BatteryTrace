@@ -62,10 +62,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         source.activate()
         terminationSignal = source
 
-        // Development aids: `-openPopover YES`, `-openSettings YES`, `-snapshotTo <dir>`.
+        // Development aids: `-openPopover YES`, `-openSettings YES`, `-snapshotTo <dir>`,
+        // `-settingsReport YES` (with `-simulateScreenHeight <pt>` for a short screen).
         if UserDefaults.standard.bool(forKey: "openPopover") { statusItem.showPopover() }
         if UserDefaults.standard.bool(forKey: "openSettings") { showSettings() }
         if UserDefaults.standard.bool(forKey: "testNotification") { alerts.runDeliveryTest() }
+        if UserDefaults.standard.bool(forKey: "settingsReport") { reportSettingsLayout() }
         if let directory = UserDefaults.standard.string(forKey: "snapshotTo") { DebugSnapshot.run(model: model, updates: updates, to: directory) }
     }
 
@@ -121,6 +123,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         show(pane: .about)
     }
 
+    /// `-settingsReport YES`: opens each pane in turn, prints how the window
+    /// fitted it, and quits.
+    private func reportSettingsLayout() {
+        var panes = SettingsPane.allCases
+        func next() {
+            guard !panes.isEmpty else {
+                NSApp.terminate(nil)
+                return
+            }
+            show(pane: panes.removeFirst())
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                if let report = self?.settingsController?.layoutReport { print(report) }
+                next()
+            }
+        }
+        next()
+    }
+
     private func show(pane: SettingsPane?) {
         statusItem.closePopover()
         let settings = settingsController ?? makeSettings()
@@ -143,6 +163,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         settings.highestTop = { [weak self] screen in
             screen.frame.maxY - (self?.statusItem.menuBarHeight(on: screen) ?? 0)
         }
+        let simulated = UserDefaults.standard.double(forKey: "simulateScreenHeight")
+        if simulated > 0 { settings.highestTop = { $0.visibleFrame.minY + simulated } }
         settingsController = settings
         return settings
     }
