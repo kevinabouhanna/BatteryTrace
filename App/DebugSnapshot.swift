@@ -21,7 +21,7 @@ enum DebugSnapshot {
             }
             let launchAtLogin = LaunchAtLogin()
             let panes: [(String, AnyView)] = [
-                ("settings-general", AnyView(GeneralSettingsPane(settings: model.settings, launchAtLogin: launchAtLogin))),
+                ("settings-general", AnyView(GeneralSettingsPane(settings: model.settings, launchAtLogin: launchAtLogin, alerts: PowerAlerts(settings: model.settings)))),
                 ("settings-about", AnyView(AboutSettingsPane())),
             ]
             for (name, pane) in panes {

@@ -19,6 +19,7 @@ enum SettingsMetrics {
 struct GeneralSettingsPane: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var launchAtLogin: LaunchAtLogin
+    @ObservedObject var alerts: PowerAlerts
     var onExport: () -> Void = {}
 
     var body: some View {
@@ -57,6 +58,41 @@ struct GeneralSettingsPane: View {
                 Text("Apps")
             } footer: {
                 SettingsFootnote("When a service such as Spotlight's indexer works for an app, macOS records it. On, that work counts for the app; off, for the service that did it, as in Activity Monitor. Totals don't change.")
+            }
+
+            Section {
+                Toggle("Tell me when an app uses a lot of power", isOn: Binding(
+                    get: { settings.notifiesHungryApps && alerts.permission != .denied },
+                    set: { enabled in
+                        guard enabled else {
+                            settings.notifiesHungryApps = false
+                            return
+                        }
+                        // macOS asks once, the first time; after that it remembers.
+                        alerts.requestPermission { granted in settings.notifiesHungryApps = granted }
+                    }
+                ))
+                .toggleStyle(.switch)
+                if settings.notifiesHungryApps, alerts.permission != .denied {
+                    LabeledContent("When an app averages more than") {
+                        Picker("When an app averages more than", selection: $settings.alertThresholdWatts) {
+                            ForEach(SettingsStore.alertThresholds, id: \.self) { Text("\(Int($0)) W").tag($0) }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
+                if alerts.permission == .denied {
+                    LabeledContent {
+                        Button("Open Notifications") { alerts.openNotificationSettings() }
+                    } label: {
+                        SettingsRowDetail("Notifications are off for Battery Trace in System Settings.")
+                    }
+                }
+            } header: {
+                Text("Notifications")
+            } footer: {
+                SettingsFootnote("For an app that keeps it up for 10 minutes, on battery only, and at most once an hour per app. macOS asks for permission the first time you turn this on.")
             }
 
             Section {

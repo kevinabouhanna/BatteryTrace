@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var conditions: SystemConditions?
     private var terminationSignal: DispatchSourceSignal?
     private let launchAtLogin = LaunchAtLogin()
+    private var alerts: PowerAlerts!
     /// Built when Settings opens and released when it closes, so a closed
     /// Settings holds no view hierarchy.
     private var settingsController: SettingsWindowController?
@@ -34,6 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem.exportHistory = { [weak self] in self?.exportHistory() }
         statusItem.openSettingsWindow = { [weak self] in self?.openSettingsWindow }
         conditions = SystemConditions(engine: model.engine, history: model.history)
+        alerts = PowerAlerts(settings: model.settings)
+        alerts.onOpen = { [weak self] in self?.statusItem.showPopover() }
+        model.onReport = { [weak self] report in self?.alerts.receive(report) }
         model.start()
 
         // `kill` (and logout scripts) send SIGTERM, which skips
@@ -47,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Development aids: `-openPopover YES`, `-openSettings YES`, `-snapshotTo <dir>`.
         if UserDefaults.standard.bool(forKey: "openPopover") { statusItem.showPopover() }
         if UserDefaults.standard.bool(forKey: "openSettings") { showSettings() }
+        if UserDefaults.standard.bool(forKey: "testNotification") { alerts.runDeliveryTest() }
         if let directory = UserDefaults.standard.string(forKey: "snapshotTo") { DebugSnapshot.run(model: model, to: directory) }
     }
 
@@ -114,7 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func makeSettings() -> SettingsWindowController {
-        let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin,
+        let settings = SettingsWindowController(settings: model.settings, launchAtLogin: launchAtLogin, alerts: alerts,
                                                 onExport: { [weak self] in self?.exportHistory() })
         settings.window.delegate = self
         settings.highestTop = { [weak self] screen in
@@ -150,8 +155,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
-        // Login Items may have been changed in System Settings meanwhile.
+        // Login Items or notifications may have been changed in System Settings meanwhile.
         launchAtLogin.refresh()
+        alerts.refreshPermission()
     }
 
     /// Opening Battery Trace again while it runs, or clicking its Dock icon
