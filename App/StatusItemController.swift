@@ -1,4 +1,5 @@
 import AppKit
+import BatteryTraceCore
 import SwiftUI
 
 /// The menu bar item and its popover.
@@ -15,8 +16,9 @@ import SwiftUI
 @MainActor
 final class StatusItemController: NSObject, NSPopoverDelegate {
     private let model: AppModel
-    /// Opens Settings. Set by `AppDelegate`.
+    /// Opens Settings, or its About pane. Set by `AppDelegate`.
     var openSettings: () -> Void = {}
+    var openAbout: () -> Void = {}
     /// The Settings window while it's open, which the popover leaves where it is.
     var openSettingsWindow: () -> NSWindow? = { nil }
 
@@ -52,6 +54,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if let button = item.button {
             button.target = self
             button.action = #selector(statusItemClicked(_:))
+            // Right-clicks too (a two-finger click on a trackpad is one), for the menu.
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.imagePosition = .imageLeading
             button.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
             button.setAccessibilityLabel("Battery Trace")
@@ -84,8 +88,61 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        togglePopover()
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
+            showMenu()
+        } else {
+            togglePopover()
+        }
     }
+
+    // MARK: Right-click menu
+
+    /// A right-click, a two-finger click or a Control-click: the reading as a
+    /// line to read, then Settings, About and Quit.
+    private func showMenu() {
+        // The outside-click monitor leaves status item clicks alone, so this
+        // one would otherwise open the menu over the popover.
+        if popover.isShown { closePopover(returningFocus: true) }
+
+        let menu = NSMenu()
+        for line in Self.readingLines(for: model.reading) {
+            let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+        }
+        if !menu.items.isEmpty { menu.addItem(.separator()) }
+        menu.addItem(withTitle: "Settings…", action: #selector(menuSettings), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: "About Battery Trace", action: #selector(menuAbout), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Quit Battery Trace", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q").target = NSApp
+
+        item.menu = menu
+        item.button?.performClick(nil)
+        // Detached at once, so the next left-click opens the popover, not the menu.
+        item.menu = nil
+    }
+
+    /// "64% · On battery, about 5:37 left" and "Using 5.3 W" style lines.
+    static func readingLines(for reading: LiveReading?) -> [String] {
+        guard let reading else { return [] }
+        let battery = reading.battery
+        var lines: [String] = []
+        if let percent = battery.percent {
+            var state = battery.isOnExternalPower ? (battery.isCharging ? "Charging" : "On power adapter") : "On battery"
+            if !battery.isOnExternalPower, let minutes = battery.minutesToEmpty {
+                state += ", about \(Units.duration(minutes: minutes)) left"
+            }
+            lines.append("\(Int(percent.rounded()))% · \(state)")
+        }
+        if let watts = reading.systemWatts {
+            lines.append(battery.isPresent && !battery.isOnExternalPower ? "Using \(Units.watts(watts)) from the battery" : "Drawing \(Units.watts(watts))")
+        }
+        return lines
+    }
+
+    @objc private func menuSettings() { openSettings() }
+    @objc private func menuAbout() { openAbout() }
 
     // MARK: Popover
 

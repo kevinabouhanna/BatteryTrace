@@ -28,7 +28,8 @@ memory and the rest of the chip.
 ## Build and run
 
 - **In Xcode:** open `BatteryTrace.xcodeproj` and run the **BatteryTrace**
-  scheme. The app appears in the menu bar, with no Dock icon.
+  scheme. The app appears in the menu bar, with no Dock icon. Click it for the
+  popover; right-click (or two-finger click) it for Settings, About and Quit.
 - **From the command line:**
   ```sh
   make app      # build/DerivedData/Build/Products/Release/Battery Trace.app
