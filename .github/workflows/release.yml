@@ -11,6 +11,11 @@ permissions:
 jobs:
   release:
     runs-on: macos-latest
+    env:
+      # Signing and notarization run only when every secret they need exists
+      # (docs/RELEASING.md). Without them the release is ad-hoc signed, as before.
+      CAN_SIGN: ${{ secrets.DEVELOPER_ID_P12 != '' && secrets.DEVELOPER_ID_P12_PASSWORD != '' && secrets.APPLE_ID != '' && secrets.APPLE_TEAM_ID != '' && secrets.APPLE_APP_PASSWORD != '' }}
+      APP: build/DerivedDataUniversal/Build/Products/Release/Battery Trace.app
 
     steps:
       - uses: actions/checkout@v4
@@ -26,14 +31,53 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Build the universal app and its disk image
+      - name: Build the universal app
         env:
           MARKETING_VERSION: ${{ steps.version.outputs.value }}
-        run: make dmg
+        run: make universal
+
+      - name: Import the Developer ID certificate
+        if: env.CAN_SIGN == 'true'
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(uuidgen)
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          echo "$DEVELOPER_ID_P12" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" -P "$DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          identity=$(security find-identity -v -p codesigning "$keychain" | grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"')
+          [ -n "$identity" ] || { echo "no Developer ID Application identity in the certificate" >&2; exit 1; }
+          echo "SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+
+      - name: Sign and notarize the app
+        if: env.CAN_SIGN == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: Scripts/sign-and-notarize.sh app "$APP"
+
+      - name: Build the disk image
+        run: Scripts/make-dmg.sh "$APP"
+
+      - name: Sign and notarize the disk image
+        if: env.CAN_SIGN == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: Scripts/sign-and-notarize.sh dmg build/BatteryTrace.dmg
 
       - name: Verify the stamped version matches the tag
         run: |
-          app="build/DerivedDataUniversal/Build/Products/Release/Battery Trace.app"
+          app="$APP"
           stamped=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist")
           if [ "$stamped" != "${{ steps.version.outputs.value }}" ]; then
             echo "tag says ${{ steps.version.outputs.value }}, bundle says $stamped" >&2
@@ -43,10 +87,31 @@ jobs:
           lipo -archs "$app/Contents/MacOS/Battery Trace"
           codesign --verify --deep --strict "$app"
 
-      # The one rough edge left is Gatekeeper's first-open warning, which only a
-      # Developer ID signature and notarization remove. Until then the notes walk
+      - name: Write the release notes preamble (signed)
+        if: env.CAN_SIGN == 'true'
+        run: |
+          cat > release-notes.md <<'NOTE'
+          ### Installing
+
+          For macOS 14 or later, on Apple silicon or Intel.
+
+          Download **BatteryTrace.dmg** below, open it, and drag Battery Trace
+          into **Applications**. It is signed with a Developer ID and notarized
+          by Apple. Look for the ⚡︎ reading in your menu bar.
+
+          ### Updating
+
+          **Check for Updates…** in Battery Trace's right-click menu says when
+          there's a new version. Download it and drag Battery Trace into
+          Applications again, choosing **Replace**. Your settings and history stay.
+
+          ---
+          NOTE
+
+      # Without a Developer ID, Gatekeeper warns on first open. The notes walk
       # through "Open Anyway" so nobody takes the warning for a broken build.
       - name: Write the release notes preamble
+        if: env.CAN_SIGN != 'true'
         run: |
           cat > release-notes.md <<'NOTE'
           ### Installing
@@ -66,9 +131,11 @@ jobs:
 
           ### Updating
 
-          Download the disk image and drag Battery Trace into Applications again,
-          choosing **Replace**. Your settings and history stay. macOS checks each
-          new version afresh, so approve it with **Open Anyway** once more.
+          **Check for Updates…** in Battery Trace's right-click menu says when
+          there's a new version. Download the disk image and drag Battery Trace
+          into Applications again, choosing **Replace**. Your settings and
+          history stay. macOS checks each new version afresh, so approve it with
+          **Open Anyway** once more.
 
           ---
           NOTE

@@ -10,13 +10,14 @@
 //                    <- Storage (+ Attribution's ledger)
 //   Sampling = PowerSources + Attribution, driven by a timer policy
 //   bttrace  = Sampling + Storage, headless
+//   Updates: asks GitHub for the latest release (Foundation only)
 import PackageDescription
 
 let package = Package(
     name: "BatteryTraceKit",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "BatteryTraceKit", targets: ["BatteryTraceCore", "PowerSources", "Attribution", "Sampling", "Storage"]),
+        .library(name: "BatteryTraceKit", targets: ["BatteryTraceCore", "PowerSources", "Attribution", "Sampling", "Storage", "Updates"]),
         .executable(name: "bttrace", targets: ["bttrace"]),
     ],
     targets: [
@@ -28,15 +29,17 @@ let package = Package(
         ),
         .target(name: "Attribution", dependencies: ["BatteryTraceCore"]),
         .target(name: "Storage", dependencies: ["BatteryTraceCore", "Attribution"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .target(name: "Updates"),
         .target(name: "Sampling", dependencies: ["BatteryTraceCore", "PowerSources", "Attribution"]),
         .executableTarget(
             name: "bttrace",
-            dependencies: ["BatteryTraceCore", "PowerSources", "Attribution", "Sampling", "Storage"],
+            dependencies: ["BatteryTraceCore", "PowerSources", "Attribution", "Sampling", "Storage", "Updates"],
             linkerSettings: [.linkedFramework("Metal")]
         ),
         .testTarget(name: "AttributionTests", dependencies: ["Attribution", "BatteryTraceCore"]),
         .testTarget(name: "SamplingTests", dependencies: ["Sampling", "BatteryTraceCore"]),
         .testTarget(name: "StorageTests", dependencies: ["Storage", "Attribution", "BatteryTraceCore"]),
         .testTarget(name: "PowerSourcesTests", dependencies: ["PowerSources", "BatteryTraceCore"]),
+        .testTarget(name: "UpdatesTests", dependencies: ["Updates"]),
     ]
 )

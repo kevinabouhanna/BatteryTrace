@@ -27,6 +27,8 @@ case "totals":
     TotalsCommand.run(&arguments)
 case "export":
     ExportCommand.run(&arguments)
+case "updates":
+    UpdatesCommand.run(&arguments)
 default:
     print("""
     usage: bttrace <command> [options]
@@ -44,6 +46,7 @@ default:
       compare-powermetrics --ours FILE.jsonl --powermetrics FILE.plist
                                        compare a `sample --json` run with `powermetrics -f plist`
       calibrate-display [--settle 6]   fit the backlight power model (changes brightness, then restores it)
+      updates [--as 0.6.0]             what Check for Updates… would say (one request to GitHub)
     """)
 }
 

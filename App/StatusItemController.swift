@@ -20,6 +20,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     var openSettings: () -> Void = {}
     var openAbout: () -> Void = {}
     var exportHistory: () -> Void = {}
+    var updates: UpdateChecker?
     /// The Settings window while it's open, which the popover leaves where it is.
     var openSettingsWindow: () -> NSWindow? = { nil }
 
@@ -120,8 +121,13 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             menu.addItem(item)
         }
         if !menu.items.isEmpty { menu.addItem(.separator()) }
+        if let release = updates?.available {
+            menu.addItem(withTitle: "Update Available: \(release.version)…", action: #selector(menuUpdate), keyEquivalent: "").target = self
+            menu.addItem(.separator())
+        }
         menu.addItem(withTitle: "Export History…", action: #selector(menuExport), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Settings…", action: #selector(menuSettings), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: "Check for Updates…", action: #selector(menuCheckForUpdates), keyEquivalent: "").target = self
         menu.addItem(withTitle: "About Battery Trace", action: #selector(menuAbout), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Battery Trace", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q").target = NSApp
@@ -153,6 +159,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     @objc private func menuSettings() { openSettings() }
     @objc private func menuAbout() { openAbout() }
     @objc private func menuExport() { exportHistory() }
+    @objc private func menuCheckForUpdates() { updates?.check(interactive: true) }
+    @objc private func menuUpdate() { updates?.showAvailable() }
 
     // MARK: Popover
 

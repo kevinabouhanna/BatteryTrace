@@ -207,6 +207,9 @@ struct GeneralSettingsPane: View {
 /// Which version this is, where to read more, what it reads, and where its
 /// history lives.
 struct AboutSettingsPane: View {
+    @ObservedObject var settings: SettingsStore
+    @ObservedObject var updates: UpdateChecker
+
     private var version: String {
         let info = Bundle.main.infoDictionary
         guard let short = info?["CFBundleShortVersionString"] as? String else { return "Development build" }
@@ -232,6 +235,25 @@ struct AboutSettingsPane: View {
             }
 
             Section {
+                LabeledContent {
+                    HStack {
+                        if case .available(let release) = updates.state {
+                            Button("Download") { updates.download(release) }
+                        }
+                        Button("Check Now") { updates.check(interactive: true) }
+                            .disabled(updates.state == .checking)
+                    }
+                } label: {
+                    Text("Updates")
+                    SettingsRowDetail(updateStatus)
+                }
+                Toggle("Check automatically once a day", isOn: $settings.checksForUpdates)
+                    .toggleStyle(.switch)
+            } footer: {
+                SettingsFootnote("Asks GitHub which version is newest: one request, which carries nothing about your Mac. Nothing is installed by itself. Download opens the disk image, to drag into Applications as before.")
+            }
+
+            Section {
                 link("How it works", "How power is attributed", "https://github.com/kevinabouhanna/BatteryTrace/blob/main/docs/ATTRIBUTION.md")
                 link("What's new", "Release notes", "https://github.com/kevinabouhanna/BatteryTrace/releases/latest")
                 link("Source code", "On GitHub", "https://github.com/kevinabouhanna/BatteryTrace")
@@ -240,7 +262,7 @@ struct AboutSettingsPane: View {
             }
 
             Section {
-                Text("No permissions, no administrator password, no network access, no telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays on this Mac.")
+                Text("No permissions, no administrator password, no telemetry. Battery Trace reads the battery gauge, the chip's energy counters and the kernel's per-app counters, which macOS makes available to any app. Its history stays on this Mac. It goes online only to ask GitHub for the newest version: when you check, or once a day if you turn that on.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -249,6 +271,16 @@ struct AboutSettingsPane: View {
             }
         }
         .settingsForm()
+    }
+
+    private var updateStatus: String {
+        switch updates.state {
+        case .idle: "Not checked yet"
+        case .checking: "Checking…"
+        case .upToDate(let checked): "Up to date, checked \(checked.formatted(date: .omitted, time: .shortened))"
+        case .available(let release): "Version \(release.version) is available"
+        case .failed: "Couldn't check. Try again later."
+        }
     }
 
     private func link(_ title: String, _ text: String, _ address: String) -> some View {
