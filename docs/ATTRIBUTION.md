@@ -14,16 +14,14 @@ from, and how it can be wrong.
  ├─ Neural Engine(IOReport PMP, measured) ──┘   per-coalition energy counters
  ├─ Memory       (DRAM + controller, measured)  ┐
  ├─ Display      (backlight model, ESTIMATE)    │
- ├─ Display controller (measured)               ├─ System / Unattributed row
+ ├─ Display controller (measured)               ├─ System row
  ├─ Other chip blocks (ISP, codecs, …, measured)│
  └─ Unattributed = total − all of the above     ┘
 ```
 
-The app rows and the System / Unattributed row always add up to the
-measured total.
-
-The System / Unattributed row is listed among the apps by size. Clicked,
-it shows its parts, largest first.
+The app rows and the System row always add up to the measured total. The
+System row is listed among the apps by size. Clicked, it shows its parts,
+largest first.
 
 ## 1. The measured total
 

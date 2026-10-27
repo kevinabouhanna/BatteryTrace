@@ -40,7 +40,7 @@ import Testing
     }
 
     @Test func rowsAlwaysAddUpToTheMeasuredTotal() {
-        // Random fixtures: apps + System/Unattributed == measured, whenever
+        // Random fixtures: apps + System == measured, whenever
         // the components don't exceed the measurement.
         var generator = SystemRandomNumberGenerator()
         for _ in 0..<500 {

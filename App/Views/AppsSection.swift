@@ -81,7 +81,7 @@ struct AppsSection: View {
     private func systemRow(_ summary: WindowSummary) -> some View {
         let parts = summary.systemParts
         return AppRowView(
-            name: "System / Unattributed",
+            name: "System",
             icon: NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: nil) ?? NSImage(),
             joules: summary.systemJoules,
             share: summary.share(of: summary.systemJoules),
@@ -196,7 +196,7 @@ struct ProcessList: View {
     }
 }
 
-/// What the System / Unattributed row is made of, largest first.
+/// What the System row is made of, largest first.
 struct SystemPartList: View {
     let parts: [SystemPart]
     let summary: WindowSummary
@@ -259,7 +259,7 @@ struct EstimateExplanation: View {
             Text("How these figures are made").font(.headline)
             Text("The total is measured: the battery gauge, or the Mac's power sensor. CPU, GPU and Neural Engine energy are measured by the chip.")
             Text("macOS has no per-app battery API, so each app's share is an estimate: the chip's measured energy is split in proportion to the kernel's own per-app energy counters. Helpers and background processes count for their app.")
-            Text("Work done for an app by system services (drawing its windows, decoding its video) is counted for those services. Display, memory, Wi-Fi and the rest are in System / Unattributed.")
+            Text("Work done for an app by system services (drawing its windows, decoding its video) is counted for those services. Display, memory, Wi-Fi and the rest are in System.")
         }
         .font(.callout)
         .frame(width: 300)

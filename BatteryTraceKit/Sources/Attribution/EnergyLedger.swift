@@ -195,7 +195,7 @@ public struct WindowSummary: Sendable, Hashable {
     public var apps: [AppRow]
     public var unclaimedJoules: Double
     public var unattributedJoules: Double?
-    /// The System / Unattributed row.
+    /// The System row.
     public var systemJoules: Double
     /// 1 unless the components overshot the measured total and were scaled.
     public var scale: Double
@@ -207,7 +207,7 @@ public struct WindowSummary: Sendable, Hashable {
     /// Fraction of the measured total that no component accounts for.
     public var unattributedFraction: Double? { unattributedJoules.map { totalJoules > 0 ? $0 / totalJoules : 0 } }
 
-    /// What the System / Unattributed row is made of, largest first. Adds up to `systemJoules`.
+    /// What the System row is made of, largest first. Adds up to `systemJoules`.
     public var systemParts: [SystemPart] {
         var parts = components
             .filter { $0.id.appSplit == .none }
@@ -220,7 +220,7 @@ public struct WindowSummary: Sendable, Hashable {
     }
 }
 
-/// One part of the System / Unattributed row.
+/// One part of the System row.
 public struct SystemPart: Sendable, Hashable {
     public enum Kind: Sendable, Hashable {
         /// A component no app's counters split: memory, the display, other chip blocks.

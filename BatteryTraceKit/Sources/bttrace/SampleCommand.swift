@@ -101,7 +101,7 @@ enum SampleCommand {
         for app in summary.apps.prefix(top) {
             print("  \(Format.pad(app.identity.name, 34)) \(String(format: "%5.1f", summary.share(of: app.joules) * 100))%   \(Format.energy(app.joules))")
         }
-        print("  \(Format.pad("System / Unattributed", 34)) \(String(format: "%5.1f", summary.share(of: summary.systemJoules) * 100))%   \(Format.energy(summary.systemJoules))")
+        print("  \(Format.pad("System", 34)) \(String(format: "%5.1f", summary.share(of: summary.systemJoules) * 100))%   \(Format.energy(summary.systemJoules))")
     }
 }
 
