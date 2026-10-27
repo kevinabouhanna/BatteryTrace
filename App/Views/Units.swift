@@ -23,6 +23,14 @@ enum Units {
         return prefix + String(format: "%.2f Wh", wh)
     }
 
+    /// A change in percentage points, signed. One that rounds to zero is "No
+    /// change", never "-0.0".
+    static func points(_ change: Double) -> String {
+        let rounded = (change * 10).rounded() / 10
+        if rounded == 0 { return "No change" }
+        return String(format: "%+.1f points", rounded)
+    }
+
     static func share(_ fraction: Double) -> String {
         if fraction <= 0 { return "0%" }
         if fraction < 0.01 { return "<1%" }
