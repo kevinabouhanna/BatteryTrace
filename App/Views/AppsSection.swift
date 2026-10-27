@@ -6,6 +6,7 @@ import SwiftUI
 struct AppsSection: View {
     @ObservedObject var model: AppModel
     @State private var expanded: Set<AppKey> = []
+    @State private var systemExpanded = false
     @State private var showingExplanation = false
 
     var body: some View {
@@ -48,34 +49,50 @@ struct AppsSection: View {
     }
 
     private func list(_ summary: WindowSummary) -> some View {
-        ScrollView {
+        let apps = Array(summary.apps.prefix(40))
+        // The System row takes its place by size, like any app.
+        let systemIndex = apps.firstIndex { $0.joules < summary.systemJoules } ?? apps.count
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(summary.apps.prefix(40)) { row in
-                    AppRowView(
-                        name: row.identity.name,
-                        icon: AppIcons.shared.icon(for: row.identity),
-                        joules: row.joules,
-                        share: summary.share(of: row.joules),
-                        processes: row.processes,
-                        isExpanded: expanded.contains(row.id)
-                    ) {
-                        if expanded.contains(row.id) { expanded.remove(row.id) } else { expanded.insert(row.id) }
-                    }
-                }
-                AppRowView(
-                    name: "System / Unattributed",
-                    icon: NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: nil) ?? NSImage(),
-                    joules: summary.systemJoules,
-                    share: summary.share(of: summary.systemJoules),
-                    processes: [],
-                    isExpanded: false,
-                    caption: "Display, memory, Wi-Fi, SSD and what no counter covers",
-                    toggle: {}
-                )
+                ForEach(apps[..<systemIndex]) { appRow($0, summary) }
+                systemRow(summary)
+                ForEach(apps[systemIndex...]) { appRow($0, summary) }
             }
             .padding(.horizontal, 8)
         }
         .frame(maxHeight: 300)
+    }
+
+    private func appRow(_ row: WindowSummary.AppRow, _ summary: WindowSummary) -> some View {
+        AppRowView(
+            name: row.identity.name,
+            icon: AppIcons.shared.icon(for: row.identity),
+            joules: row.joules,
+            share: summary.share(of: row.joules),
+            expandable: row.processes.count > 1 || row.processes.first?.name == ProcessShare.otherProcessesName,
+            isExpanded: expanded.contains(row.id)
+        ) {
+            if expanded.contains(row.id) { expanded.remove(row.id) } else { expanded.insert(row.id) }
+        } detail: {
+            ProcessList(processes: row.processes)
+        }
+    }
+
+    private func systemRow(_ summary: WindowSummary) -> some View {
+        let parts = summary.systemParts
+        return AppRowView(
+            name: "System / Unattributed",
+            icon: NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: nil) ?? NSImage(),
+            joules: summary.systemJoules,
+            share: summary.share(of: summary.systemJoules),
+            expandable: !parts.isEmpty,
+            isExpanded: systemExpanded,
+            caption: "Display, memory, Wi-Fi, SSD and more"
+        ) {
+            systemExpanded.toggle()
+        } detail: {
+            SystemPartList(parts: parts, summary: summary)
+        }
     }
 
     private func footer(_ summary: WindowSummary) -> some View {
@@ -102,17 +119,17 @@ struct AppsSection: View {
     }
 }
 
-struct AppRowView: View {
+struct AppRowView<Detail: View>: View {
     let name: String
     let icon: NSImage
     let joules: Double
     let share: Double
-    let processes: [ProcessShare]
+    let expandable: Bool
     let isExpanded: Bool
     var caption: String?
     let toggle: () -> Void
-
-    private var expandable: Bool { processes.count > 1 || processes.first?.name == ProcessShare.otherProcessesName }
+    /// Shown under the row while it's expanded.
+    @ViewBuilder let detail: () -> Detail
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -146,25 +163,79 @@ struct AppRowView: View {
             .padding(.horizontal, 6)
 
             if isExpanded {
-                ForEach(processes.prefix(12), id: \.name) { process in
-                    HStack {
-                        Text(process.name)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .foregroundStyle(process.pid == nil && process.name == ProcessShare.otherProcessesName ? .secondary : .primary)
-                        Spacer()
-                        Text(Units.energy(process.cpuJoules)).monospacedDigit().foregroundStyle(.secondary)
-                    }
-                    .font(.caption)
+                detail()
                     .padding(.leading, 46)
                     .padding(.trailing, 6)
-                }
-                Text("CPU by process; GPU and Neural Engine use is counted for the app as a whole.")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .padding(.leading, 46)
                     .padding(.bottom, 4)
             }
+        }
+    }
+}
+
+/// An app's CPU energy by process.
+struct ProcessList: View {
+    let processes: [ProcessShare]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(processes.prefix(12), id: \.name) { process in
+                HStack {
+                    Text(process.name)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .foregroundStyle(process.pid == nil && process.name == ProcessShare.otherProcessesName ? .secondary : .primary)
+                    Spacer()
+                    Text(Units.energy(process.cpuJoules)).monospacedDigit().foregroundStyle(.secondary)
+                }
+                .font(.caption)
+            }
+            Text("CPU by process; GPU and Neural Engine use is counted for the app as a whole.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+/// What the System / Unattributed row is made of, largest first.
+struct SystemPartList: View {
+    let parts: [SystemPart]
+    let summary: WindowSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(parts, id: \.kind) { part in
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 4) {
+                            Text(name(part.kind)).lineLimit(1)
+                            if part.provenance == .estimated {
+                                Text("estimate").font(.caption2).padding(.horizontal, 4).background(.quaternary, in: Capsule())
+                            }
+                        }
+                        if part.kind == .unattributed {
+                            Text("Wi-Fi, SSD, audio, panel electronics, conversion losses")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer()
+                    Text(Units.share(summary.share(of: part.joules))).monospacedDigit()
+                    Text(Units.energy(part.joules, estimated: part.provenance == .estimated))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(width: 64, alignment: .trailing)
+                }
+                .font(.caption)
+            }
+        }
+    }
+
+    private func name(_ kind: SystemPart.Kind) -> String {
+        switch kind {
+        case .component(let id): id.displayName
+        case .unclaimed: "CPU, GPU, Neural Engine (no app)"
+        case .unattributed: "Unattributed"
         }
     }
 }

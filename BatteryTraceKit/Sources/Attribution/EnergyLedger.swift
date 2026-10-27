@@ -206,4 +206,32 @@ public struct WindowSummary: Sendable, Hashable {
 
     /// Fraction of the measured total that no component accounts for.
     public var unattributedFraction: Double? { unattributedJoules.map { totalJoules > 0 ? $0 / totalJoules : 0 } }
+
+    /// What the System / Unattributed row is made of, largest first. Adds up to `systemJoules`.
+    public var systemParts: [SystemPart] {
+        var parts = components
+            .filter { $0.id.appSplit == .none }
+            .map { SystemPart(kind: .component($0.id), joules: $0.joules, provenance: $0.provenance) }
+        parts.append(SystemPart(kind: .unclaimed, joules: unclaimedJoules, provenance: .measured))
+        if let unattributedJoules {
+            parts.append(SystemPart(kind: .unattributed, joules: unattributedJoules, provenance: .measured))
+        }
+        return parts.filter { $0.joules > 0 }.sorted { $0.joules > $1.joules }
+    }
+}
+
+/// One part of the System / Unattributed row.
+public struct SystemPart: Sendable, Hashable {
+    public enum Kind: Sendable, Hashable {
+        /// A component no app's counters split: memory, the display, other chip blocks.
+        case component(ComponentID)
+        /// CPU, GPU or Neural Engine energy that no app's counters accounted for.
+        case unclaimed
+        /// The measured total minus every component.
+        case unattributed
+    }
+
+    public var kind: Kind
+    public var joules: Double
+    public var provenance: Provenance
 }
