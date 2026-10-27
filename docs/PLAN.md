@@ -86,7 +86,7 @@ Components         = CPU + GPU + ANE + DRAM + display (est.) + other SoC     (IO
 Unattributed       = Total − Components     (Wi-Fi, SSD, audio, power conversion losses…)
 App_i CPU          = CPU × ΔE_cpu(i) / Σ ΔE_cpu      (coalition nJ deltas)
 App_i GPU, App_i ANE: the same, with GPU and ANE deltas
-System / Unattributed row = DRAM + display + other SoC + Unattributed + any CPU/GPU/ANE not covered by an app
+System row = DRAM + display + other SoC + Unattributed + any CPU/GPU/ANE not covered by an app
 ```
 
 The rows always add up to the measured total. Per-app figures are labelled

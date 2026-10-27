@@ -146,7 +146,7 @@ public struct IntervalReport: Sendable, Codable {
     public var componentJoules: Double { components.reduce(0) { $0 + $1.joules } }
     public var appJoules: Double { apps.reduce(0) { $0 + $1.joules } }
 
-    /// The System / Unattributed row: everything that isn't an app.
+    /// The System row: everything that isn't an app.
     public var systemJoules: Double {
         let nonApp = components.filter { $0.id.appSplit == .none }.reduce(0) { $0 + $1.joules }
         return nonApp + unclaimedJoules + (unattributedJoules ?? 0)
