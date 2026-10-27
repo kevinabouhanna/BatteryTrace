@@ -22,6 +22,9 @@ from, and how it can be wrong.
 The app rows and the System / Unattributed row always add up to the
 measured total.
 
+The System / Unattributed row is listed among the apps by size. Clicked,
+it shows its parts, largest first.
+
 ## 1. The measured total
 
 | Source | What it is | Used for |

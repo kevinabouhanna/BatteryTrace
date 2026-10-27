@@ -66,6 +66,29 @@ import Testing
         #expect(row.processes[0].cpuJoules == 4)
     }
 
+    @Test func theSystemRowsPartsAreLargestFirstAndAddUpToIt() {
+        var ledger = EnergyLedger()
+        let app = AppEnergy(identity: chrome, usage: .zero, cpuJoules: 30)
+        var interval = report(measured: 200, components: [ComponentEnergy(id: .cpu, joules: 40, provenance: .measured),
+                                                          ComponentEnergy(id: .memory, joules: 20, provenance: .measured),
+                                                          ComponentEnergy(id: .displayBacklight, joules: 50, provenance: .estimated)], apps: [app])
+        interval.unclaimedJoules = 10
+        ledger.add(interval)
+        let summary = ledger.summary()
+        let parts = summary.systemParts
+        #expect(parts.map(\.kind) == [.unattributed, .component(.displayBacklight), .component(.memory), .unclaimed])
+        #expect(parts.map(\.joules) == [90, 50, 20, 10])
+        #expect(parts[1].provenance == .estimated)
+        #expect(abs(parts.reduce(0) { $0 + $1.joules } - summary.systemJoules) < 1e-9)
+    }
+
+    @Test func emptySystemPartsAreLeftOut() {
+        var ledger = EnergyLedger()
+        ledger.add(report(measured: nil, components: [ComponentEnergy(id: .cpu, joules: 10, provenance: .measured),
+                                                      ComponentEnergy(id: .memory, joules: 3, provenance: .measured)]))
+        #expect(ledger.summary().systemParts.map(\.kind) == [.component(.memory)])
+    }
+
     @Test func mergingTwoLedgersEqualsAddingEverythingToOne() {
         var a = EnergyLedger(), b = EnergyLedger(), both = EnergyLedger()
         let first = report(measured: 50, components: [ComponentEnergy(id: .gpu, joules: 5, provenance: .measured)])
