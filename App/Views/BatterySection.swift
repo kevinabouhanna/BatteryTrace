@@ -71,7 +71,7 @@ struct BatterySection: View {
             let trend = HealthPoint.trend(points)
             if let first = trend.first, let last = trend.last, trend.count >= 2 {
                 DetailRow(label: "Since \(first.day.formatted(.dateTime.day().month()))",
-                          value: String(format: "%+.1f points", last.percent - first.percent))
+                          value: Units.points(last.percent - first.percent))
                 Sparkline(values: trend.map(\.percent)).frame(height: 18)
             } else {
                 Text("A reading is kept each day; the trend appears as days pass.")
